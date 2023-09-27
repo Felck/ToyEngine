@@ -1,0 +1,3 @@
+BasedOnStyle: google
+InsertBraces: true
+ColumnLimit: 80
