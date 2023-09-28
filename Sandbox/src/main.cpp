@@ -1,9 +1,10 @@
 #include <ToyEngine.hpp>
+#include <ToyEngine/Core/EntryPoint.hpp>
 #include <iostream>
 
 class Sandbox : public TE::Application {
  public:
-  Sandbox() { std::cout << "hello" << std::endl; }
+  Sandbox() { std::cout << "Hello Sandbox!" << std::endl; }
 
   ~Sandbox() {}
 };

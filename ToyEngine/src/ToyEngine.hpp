@@ -2,5 +2,4 @@
 
 // For use by client code
 
-#include "ToyEngine/Application.hpp"
-#include "ToyEngine/EntryPoint.hpp"
+#include "ToyEngine/Core/Application.hpp"
