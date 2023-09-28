@@ -9,4 +9,4 @@ class Sandbox : public TE::Application {
   ~Sandbox() {}
 };
 
-TE::Application *TE::CreateApplication() { return new Sandbox(); }
+TE::Application *TE::createApplication() { return new Sandbox(); }
