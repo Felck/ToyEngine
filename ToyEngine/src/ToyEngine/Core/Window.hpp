@@ -26,11 +26,11 @@ class Window {
 
   void onUpdate();
 
-  inline uint32_t getWidth() const { return data.Width; }
-  inline uint32_t getHeight() const { return data.Height; }
+  inline uint32_t getWidth() const { return data.width; }
+  inline uint32_t getHeight() const { return data.height; }
 
   inline void setEventCallback(const EventCallbackFn& callback) {
-    data.EventCallback = callback;
+    data.eventCallback = callback;
   }
   void setVSync(bool enabled);
   bool isVSync() const;
@@ -44,11 +44,11 @@ class Window {
   GLFWwindow* window;
 
   struct WindowData {
-    std::string Title;
-    uint32_t Width, Height;
-    bool VSync;
+    std::string title;
+    uint32_t width, height;
+    bool vSync;
 
-    EventCallbackFn EventCallback;
+    EventCallbackFn eventCallback;
   };
 
   WindowData data;

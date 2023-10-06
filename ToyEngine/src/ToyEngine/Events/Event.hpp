@@ -44,8 +44,8 @@ class Event {
 
   template <typename T, typename F>
   bool dispatch(const F& func) {
-    if (this->getEventType() == T::GetStaticType()) {
-      this->handled |= func(static_cast<T&>(this));
+    if (this->getEventType() == T::getStaticType()) {
+      this->handled |= func(static_cast<T&>(*this));
       return true;
     }
     return false;
