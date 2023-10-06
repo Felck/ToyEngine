@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Application.hpp"
-#include "tepch.hpp"
 
 extern TE::Application *TE::createApplication();
 

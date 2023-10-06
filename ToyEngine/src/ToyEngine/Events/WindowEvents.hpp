@@ -9,14 +9,14 @@ class WindowResizeEvent : public Event {
   IMPL_EVENT_CATEGORY(Window)
   IMPL_EVENT_TYPE(WindowResize)
 
-  WindowResizeEvent(unsigned int width, unsigned int height)
+  WindowResizeEvent(uint32_t width, uint32_t height)
       : width(width), height(height) {}
 
-  unsigned int getWidth() const { return width; }
-  unsigned int getHeight() const { return height; }
+  uint32_t getWidth() const { return width; }
+  uint32_t getHeight() const { return height; }
 
  private:
-  unsigned int width, height;
+  uint32_t width, height;
 };
 
 class WindowCloseEvent : public Event {
