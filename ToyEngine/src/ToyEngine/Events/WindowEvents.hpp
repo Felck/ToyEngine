@@ -6,7 +6,7 @@ namespace TE {
 
 class WindowResizeEvent : public Event {
  public:
-  IMPL_EVENT_CATEGORY(Window)
+  IMPL_EVENT_CATEGORY(WindowCategory)
   IMPL_EVENT_TYPE(WindowResize)
 
   WindowResizeEvent(uint32_t width, uint32_t height)
@@ -21,7 +21,7 @@ class WindowResizeEvent : public Event {
 
 class WindowCloseEvent : public Event {
  public:
-  IMPL_EVENT_CATEGORY(Window)
+  IMPL_EVENT_CATEGORY(WindowCategory)
   IMPL_EVENT_TYPE(WindowClose)
 };
 }  // namespace TE

@@ -6,7 +6,7 @@ namespace TE {
 
 class KeyEvent : public Event {
  public:
-  IMPL_EVENT_CATEGORY(Input | Keyboard)
+  IMPL_EVENT_CATEGORY(InputCategory | KeyboardCategory)
 
   inline int getKeyCode() const { return keyCode; }
 

@@ -10,12 +10,12 @@ enum class EventType {
 };
 
 enum EventCategory {
-  None        = 0,
-  Window      = 1 << 0,
-  Input       = 1 << 1,
-  Keyboard    = 1 << 2,
-  Mouse       = 1 << 3,
-  MouseButton = 1 << 4
+  None                = 0,
+  WindowCategory      = 1 << 0,
+  InputCategory       = 1 << 1,
+  KeyboardCategory    = 1 << 2,
+  MouseCategory       = 1 << 3,
+  MouseButtonCategory = 1 << 4
 };
 // clang-format on
 

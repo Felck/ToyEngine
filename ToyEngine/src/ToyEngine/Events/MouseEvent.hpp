@@ -6,7 +6,7 @@ namespace TE {
 
 class MouseMovedEvent : public Event {
  public:
-  IMPL_EVENT_CATEGORY(Input | Mouse)
+  IMPL_EVENT_CATEGORY(InputCategory | MouseCategory)
   IMPL_EVENT_TYPE(MouseMoved)
 
   MouseMovedEvent(float x, float y) : x(x), y(y) {}
@@ -20,7 +20,7 @@ class MouseMovedEvent : public Event {
 
 class MouseScrolledEvent : public Event {
  public:
-  IMPL_EVENT_CATEGORY(Input | Mouse)
+  IMPL_EVENT_CATEGORY(InputCategory | MouseCategory)
   IMPL_EVENT_TYPE(MouseScrolled)
 
   MouseScrolledEvent(float xOffset, float yOffset)
@@ -35,7 +35,7 @@ class MouseScrolledEvent : public Event {
 
 class MouseButtonEvent : public Event {
  public:
-  IMPL_EVENT_CATEGORY(Input | Mouse)
+  IMPL_EVENT_CATEGORY(InputCategory | MouseCategory)
 
   inline int getButton() const { return button; }
 
