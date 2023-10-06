@@ -1,0 +1,3 @@
+[submodule "ToyEngine/vendor/GLFW"]
+	path = ToyEngine/vendor/GLFW
+	url = https://github.com/glfw/glfw

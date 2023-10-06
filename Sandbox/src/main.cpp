@@ -4,7 +4,7 @@
 
 class Sandbox : public TE::Application {
  public:
-  Sandbox() { std::cout << "Hello Sandbox!" << std::endl; }
+  Sandbox() {}
 
   ~Sandbox() {}
 };
