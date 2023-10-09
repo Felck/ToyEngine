@@ -1,5 +1,7 @@
 #include "Window.hpp"
 
+#include <glad/glad.h>
+
 #include "ToyEngine/Events/KeyEvent.hpp"
 #include "ToyEngine/Events/MouseEvent.hpp"
 #include "ToyEngine/Events/WindowEvent.hpp"
@@ -25,6 +27,10 @@ void Window::init(const WindowProps& props) {
   window = glfwCreateWindow((int)props.Width, (int)props.Height,
                             data.title.c_str(), nullptr, nullptr);
   glfwMakeContextCurrent(window);
+
+  // TODO: assert
+  gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+
   glfwSetWindowUserPointer(window, &data);
   setVSync(true);
 
