@@ -35,6 +35,8 @@ class Window {
   void setVSync(bool enabled);
   bool isVSync() const;
 
+  inline void* getNativeWindow() const { return window; }
+
   static Window* create(const WindowProps& props = WindowProps());
 
  private:

@@ -1,7 +1,7 @@
 # ToyEngine
 
-file(GLOB_RECURSE TOYENGINE_CC src/*.cpp src/*.hpp )
-add_library(toyengine STATIC ${TOYENGINE_CC})
+file(GLOB_RECURSE TE_SOURCE src/*.cpp )
+add_library(toyengine STATIC ${TE_SOURCE})
 
 target_include_directories(toyengine PUBLIC ${CMAKE_CURRENT_LIST_DIR}/src)
 target_precompile_headers(toyengine PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src/tepch.hpp)
@@ -22,6 +22,14 @@ add_subdirectory(vendor/GLFW)
 
 add_subdirectory(vendor/glad)
 
+# ImGui
+
+set(IMGUI_DIR "vendor/ImGui")
+file(GLOB IMGUI_SOURCE  ${IMGUI_DIR}/*.cpp)
+add_library(imgui STATIC ${IMGUI_SOURCE} ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp)
+target_include_directories(imgui PUBLIC ${IMGUI_DIR})
+target_link_libraries(imgui glfw)
+
 # Linking
 
-target_link_libraries(toyengine PUBLIC glfw glad)
+target_link_libraries(toyengine PUBLIC glfw glad imgui)

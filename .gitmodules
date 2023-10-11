@@ -1,3 +1,7 @@
 [submodule "ToyEngine/vendor/GLFW"]
 	path = ToyEngine/vendor/GLFW
 	url = https://github.com/glfw/glfw
+[submodule "ToyEngine/vendor/ImGui"]
+	path = ToyEngine/vendor/ImGui
+	url = https://github.com/ocornut/imgui
+	branch = docking
