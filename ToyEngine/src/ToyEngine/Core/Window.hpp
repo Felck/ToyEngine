@@ -32,8 +32,6 @@ class Window {
   inline void setEventCallback(const EventCallbackFn& callback) {
     data.eventCallback = callback;
   }
-  void setVSync(bool enabled);
-  bool isVSync() const;
 
   inline void* getNativeWindow() const { return window; }
 
@@ -48,7 +46,6 @@ class Window {
   struct WindowData {
     std::string title;
     uint32_t width, height;
-    bool vSync;
 
     EventCallbackFn eventCallback;
   };

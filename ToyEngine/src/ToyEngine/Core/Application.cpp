@@ -1,6 +1,7 @@
 #include "Application.hpp"
 
-#include <glad/glad.h>
+#include "ToyEngine/Core/Window.hpp"
+#include "ToyEngine/Renderer/Renderer.hpp"
 
 namespace TE {
 
@@ -15,10 +16,9 @@ Application::Application() {
 Application::~Application() {}
 
 void Application::run() {
-  while (running) {
-    glClearColor(1, 0, 1, 1);
-    glClear(GL_COLOR_BUFFER_BIT);
+  Renderer r(*window);
 
+  while (running) {
     for (auto layer : layerStack) {
       layer->onUpdate();
     }

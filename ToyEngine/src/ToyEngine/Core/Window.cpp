@@ -1,7 +1,6 @@
 #include "Window.hpp"
 
-#include <glad/glad.h>
-
+#include "GLFW/glfw3.h"
 #include "ToyEngine/Events/KeyEvent.hpp"
 #include "ToyEngine/Events/MouseEvent.hpp"
 #include "ToyEngine/Events/WindowEvent.hpp"
@@ -21,18 +20,15 @@ void Window::init(const WindowProps& props) {
 
   // TODO: assert
   // TODO: error callback
-  // TODO: glfwTerminate on system shutdown
   glfwInit();
+
+  glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
   window = glfwCreateWindow((int)props.Width, (int)props.Height,
                             data.title.c_str(), nullptr, nullptr);
-  glfwMakeContextCurrent(window);
-
-  // TODO: assert
-  gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
   glfwSetWindowUserPointer(window, &data);
-  setVSync(true);
 
   // Set GLFW callbacks
   glfwSetWindowSizeCallback(
@@ -110,23 +106,11 @@ void Window::init(const WindowProps& props) {
       });
 }
 
-void Window::shutdown() { glfwDestroyWindow(window); }
-
-void Window::onUpdate() {
-  glfwPollEvents();
-  glfwSwapBuffers(window);
+void Window::shutdown() {
+  glfwDestroyWindow(window);
+  glfwTerminate();
 }
 
-void Window::setVSync(bool enabled) {
-  if (enabled) {
-    glfwSwapInterval(1);
-  } else {
-    glfwSwapInterval(0);
-  }
-
-  data.vSync = enabled;
-}
-
-bool Window::isVSync() const { return data.vSync; }
+void Window::onUpdate() { glfwPollEvents(); }
 
 }  // namespace TE

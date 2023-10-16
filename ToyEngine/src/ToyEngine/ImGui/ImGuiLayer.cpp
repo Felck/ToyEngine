@@ -2,8 +2,7 @@
 
 #include <GLFW/glfw3.h>
 #include <backends/imgui_impl_glfw.h>
-#include <backends/imgui_impl_opengl3.h>
-#include <glad/glad.h>
+#include <backends/imgui_impl_vulkan.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 
@@ -29,12 +28,12 @@ void ImGuiLayer::onAttach() {
   GLFWwindow* window =
       static_cast<GLFWwindow*>(app.getWindow().getNativeWindow());
 
-  ImGui_ImplGlfw_InitForOpenGL(window, true);
-  ImGui_ImplOpenGL3_Init("#version 410");
+  ImGui_ImplGlfw_InitForVulkan(window, true);
+  // ImGui_ImplVulkan_Init();
 }
 
 void ImGuiLayer::onDetach() {
-  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplVulkan_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
 }
@@ -55,14 +54,14 @@ void ImGuiLayer::onEvent(Event& e) {
 }
 
 void ImGuiLayer::begin() {
-  ImGui_ImplOpenGL3_NewFrame();
+  ImGui_ImplVulkan_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 }
 
 void ImGuiLayer::end() {
   ImGui::Render();
-  ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+  // ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData());
 }
 
 }  // namespace TE
