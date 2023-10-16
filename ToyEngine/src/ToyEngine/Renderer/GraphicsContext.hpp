@@ -1,14 +1,13 @@
 #include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_enums.hpp>
 
 #include "ToyEngine/Core/Window.hpp"
 #include "tepch.hpp"
 
 namespace TE {
-class Renderer {
+class GraphicsContext {
  public:
-  Renderer(Window& window);
-  ~Renderer();
+  GraphicsContext(Window& window);
+  ~GraphicsContext();
 
  private:
   void initVulkan();

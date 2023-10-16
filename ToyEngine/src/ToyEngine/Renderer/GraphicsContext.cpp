@@ -1,11 +1,4 @@
-#include "Renderer.hpp"
-
-#include <GLFW/glfw3.h>
-
-#include <algorithm>
-#include <cstdint>
-#include <vector>
-#include <vulkan/vulkan_enums.hpp>
+#include "GraphicsContext.hpp"
 
 #include "ToyEngine/Core/Application.hpp"
 
@@ -71,13 +64,14 @@ std::vector<const char*> getRequiredInstanceExtensions() {
 
 namespace TE {
 
-Renderer::Renderer(Window& window) : window(static_cast<GLFWwindow*>(window.getNativeWindow())) {
+GraphicsContext::GraphicsContext(Window& window)
+    : window(static_cast<GLFWwindow*>(window.getNativeWindow())) {
   initVulkan();
 }
 
-Renderer::~Renderer() { cleanupVulkan(); }
+GraphicsContext::~GraphicsContext() { cleanupVulkan(); }
 
-void Renderer::initVulkan() {
+void GraphicsContext::initVulkan() {
   // initialize function pointers
   VULKAN_HPP_DEFAULT_DISPATCHER.init();
   createInstance();
@@ -87,7 +81,7 @@ void Renderer::initVulkan() {
   createSwapChain();
 }
 
-void TE::Renderer::cleanupVulkan() {
+void TE::GraphicsContext::cleanupVulkan() {
   if (swapchain_data.swapchain) {
     device.destroySwapchainKHR(swapchain_data.swapchain);
   }
@@ -107,7 +101,7 @@ void TE::Renderer::cleanupVulkan() {
   instance.destroy();
 }
 
-void Renderer::createInstance() {
+void GraphicsContext::createInstance() {
 #ifdef ENABLE_VALIDATION_LAYERS
   if (!validateLayers()) {
     throw std::runtime_error("Validation layers requested, but not available.");
@@ -162,7 +156,7 @@ void Renderer::createInstance() {
 #endif
 }
 
-void Renderer::createSurface() {
+void GraphicsContext::createSurface() {
   VkSurfaceKHR s;
   if (glfwCreateWindowSurface(instance, window, nullptr, &s) != VK_SUCCESS) {
     throw std::runtime_error("Failed to create window surface.");
@@ -170,7 +164,7 @@ void Renderer::createSurface() {
   surface = vk::SurfaceKHR(s);
 }
 
-void Renderer::pickPhysicalDevice() {
+void GraphicsContext::pickPhysicalDevice() {
   std::vector<vk::PhysicalDevice> gpus = instance.enumeratePhysicalDevices();
 
   bool found_graphics_queue_index = false;
@@ -200,7 +194,7 @@ void Renderer::pickPhysicalDevice() {
   }
 }
 
-void Renderer::createDevice() {
+void GraphicsContext::createDevice() {
   std::vector<const char*> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
   auto device_extensions = gpu.enumerateDeviceExtensionProperties();
   if (!validateExtensions(extensions, device_extensions)) {
@@ -227,7 +221,7 @@ void Renderer::createDevice() {
   queue = device.getQueue(graphics_queue_index, 0);
 }
 
-void Renderer::createSwapChain() {
+void GraphicsContext::createSwapChain() {
   auto capabilities = gpu.getSurfaceCapabilitiesKHR(surface);
 
   // format
@@ -274,7 +268,8 @@ void Renderer::createSwapChain() {
   swapchain_data.extent = extent;
 }
 
-vk::SurfaceFormatKHR Renderer::selectSurfaceFormat(std::vector<vk::Format> const& preferred) {
+vk::SurfaceFormatKHR GraphicsContext::selectSurfaceFormat(
+    std::vector<vk::Format> const& preferred) {
   auto available = gpu.getSurfaceFormatsKHR(surface);
 
   auto it =

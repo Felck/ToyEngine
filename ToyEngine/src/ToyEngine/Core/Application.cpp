@@ -1,7 +1,7 @@
 #include "Application.hpp"
 
 #include "ToyEngine/Core/Window.hpp"
-#include "ToyEngine/Renderer/Renderer.hpp"
+#include "ToyEngine/Renderer/GraphicsContext.hpp"
 
 namespace TE {
 
@@ -16,7 +16,7 @@ Application::Application() {
 Application::~Application() {}
 
 void Application::run() {
-  Renderer r(*window);
+  GraphicsContext r(*window);
 
   while (running) {
     for (auto layer : layerStack) {
