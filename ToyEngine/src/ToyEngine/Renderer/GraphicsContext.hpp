@@ -18,13 +18,15 @@ class GraphicsContext {
   void pickPhysicalDevice();
   void createDevice();
   void createSwapChain();
+  void createGraphicsPipeline();
   vk::SurfaceFormatKHR selectSurfaceFormat(std::vector<vk::Format> const& preferred_formats);
 
   struct SwapchainData {
     vk::SwapchainKHR swapchain;
-    std::vector<vk::Image> swap_chain_images;
     vk::Format format;
     vk::Extent2D extent;
+    std::vector<vk::ImageView> image_views;
+    std::vector<vk::Framebuffer> framebuffers;
   };
 
   GLFWwindow* window;

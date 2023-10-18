@@ -12,14 +12,15 @@ const std::vector<const char*> VALIDATION_LAYERS = {"VK_LAYER_KHRONOS_validation
 bool validateLayers() {
   auto available = vk::enumerateInstanceLayerProperties();
 
-  return !std::any_of(VALIDATION_LAYERS.begin(), VALIDATION_LAYERS.end(), [&available](auto layer) {
-    return !std::any_of(available.begin(), available.end(),
-                        [&layer](auto const& lp) { return strcmp(lp.layerName, layer) == 0; });
-  });
+  return !std::any_of(
+      VALIDATION_LAYERS.begin(), VALIDATION_LAYERS.end(), [&available](const auto layer) {
+        return !std::any_of(available.begin(), available.end(),
+                            [&layer](const auto& lp) { return strcmp(lp.layerName, layer) == 0; });
+      });
 
-  auto unavailable =
-      std::find_if(VALIDATION_LAYERS.begin(), VALIDATION_LAYERS.end(), [&available](auto layer) {
-        return std::find_if(available.begin(), available.end(), [&layer](auto const& l) {
+  auto unavailable = std::find_if(
+      VALIDATION_LAYERS.begin(), VALIDATION_LAYERS.end(), [&available](const auto layer) {
+        return std::find_if(available.begin(), available.end(), [&layer](const auto& l) {
                  return strcmp(l.layerName, layer) == 0;
                }) == available.end();
       });
@@ -39,8 +40,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 
 bool validateExtensions(const std::vector<const char*>& required,
                         const std::vector<vk::ExtensionProperties>& available) {
-  return !std::any_of(required.begin(), required.end(), [&available](auto extension) {
-    return !std::any_of(available.begin(), available.end(), [&extension](auto const& ep) {
+  return !std::any_of(required.begin(), required.end(), [&available](const auto extension) {
+    return !std::any_of(available.begin(), available.end(), [&extension](const auto& ep) {
       return strcmp(ep.extensionName, extension) == 0;
     });
   });
@@ -82,6 +83,10 @@ void GraphicsContext::initVulkan() {
 }
 
 void TE::GraphicsContext::cleanupVulkan() {
+  for (auto image_view : swapchain_data.image_views) {
+    device.destroyImageView(image_view);
+  }
+
   if (swapchain_data.swapchain) {
     device.destroySwapchainKHR(swapchain_data.swapchain);
   }
@@ -263,22 +268,41 @@ void GraphicsContext::createSwapChain() {
       .clipped = true,
   };
   swapchain_data.swapchain = device.createSwapchainKHR(swapchain_create_info);
-  swapchain_data.swap_chain_images = device.getSwapchainImagesKHR(swapchain_data.swapchain);
   swapchain_data.format = format.format;
   swapchain_data.extent = extent;
+
+  std::vector<vk::Image> images = device.getSwapchainImagesKHR(swapchain_data.swapchain);
+  for (const auto& image : images) {
+    vk::ImageViewCreateInfo image_view_create_info{
+        .image = image,
+        .viewType = vk::ImageViewType::e2D,
+        .format = swapchain_data.format,
+        .components =
+            {
+                vk::ComponentSwizzle::eR,
+                vk::ComponentSwizzle::eG,
+                vk::ComponentSwizzle::eB,
+                vk::ComponentSwizzle::eA,
+            },
+        .subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1},
+    };
+    swapchain_data.image_views.push_back(device.createImageView(image_view_create_info));
+  }
 }
 
 vk::SurfaceFormatKHR GraphicsContext::selectSurfaceFormat(
-    std::vector<vk::Format> const& preferred) {
+    const std::vector<vk::Format>& preferred) {
   auto available = gpu.getSurfaceFormatsKHR(surface);
 
   auto it =
-      std::find_if(available.begin(), available.end(), [&preferred](auto const& surface_format) {
-        return std::any_of(preferred.begin(), preferred.end(), [&surface_format](auto format) {
-          return format == surface_format.format;
-        });
+      std::find_if(available.begin(), available.end(), [&preferred](const auto& surface_format) {
+        return std::any_of(
+            preferred.begin(), preferred.end(),
+            [&surface_format](const auto format) { return format == surface_format.format; });
       });
 
   return it != available.end() ? *it : available[0];
 }
+
+void GraphicsContext::createGraphicsPipeline() {}
 }  // namespace TE
