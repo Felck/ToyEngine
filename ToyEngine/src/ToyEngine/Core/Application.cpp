@@ -9,7 +9,7 @@ Application* Application::instance = nullptr;
 
 Application::Application() {
   instance = this;
-  window = std::unique_ptr<Window>(Window::create());
+  window = Window::create();
   window->setEventCallback(BIND_EVENT_FN(onEvent));
 }
 

@@ -33,5 +33,5 @@ class Application {
 };
 
 // To be defined in client
-Application* createApplication();
+std::unique_ptr<Application> createApplication();
 }  // namespace TE

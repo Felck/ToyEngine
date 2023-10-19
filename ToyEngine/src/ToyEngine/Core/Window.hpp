@@ -12,8 +12,7 @@ struct WindowProps {
   uint32_t Width;
   uint32_t Height;
 
-  WindowProps(const std::string& title = "ToyEngine", uint32_t width = 1280,
-              uint32_t height = 720)
+  WindowProps(const std::string& title = "ToyEngine", uint32_t width = 1280, uint32_t height = 720)
       : Title(title), Width(width), Height(height) {}
 };
 
@@ -29,13 +28,11 @@ class Window {
   inline uint32_t getWidth() const { return data.width; }
   inline uint32_t getHeight() const { return data.height; }
 
-  inline void setEventCallback(const EventCallbackFn& callback) {
-    data.eventCallback = callback;
-  }
+  inline void setEventCallback(const EventCallbackFn& callback) { data.eventCallback = callback; }
 
   inline void* getNativeWindow() const { return window; }
 
-  static Window* create(const WindowProps& props = WindowProps());
+  static std::unique_ptr<Window> create(const WindowProps& props = WindowProps());
 
  private:
   void init(const WindowProps& props);
