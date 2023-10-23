@@ -23,6 +23,8 @@ void Application::run() {
       layer->onUpdate();
     }
     window->onUpdate();
+
+    r.drawFrame();
   }
 }
 

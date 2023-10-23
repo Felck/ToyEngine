@@ -1,6 +1,14 @@
 #include "GraphicsContext.hpp"
 
+#include <cstdint>
+#include <map>
+#include <stdexcept>
+#include <vector>
+#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_enums.hpp>
+
 #include "ToyEngine/Core/Application.hpp"
+#include "ToyEngine/Renderer/Shader.hpp"
 
 // instantiate the default dispatcher
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
@@ -70,7 +78,46 @@ GraphicsContext::GraphicsContext(Window& window)
   initVulkan();
 }
 
-GraphicsContext::~GraphicsContext() { cleanupVulkan(); }
+GraphicsContext::~GraphicsContext() {
+  device.waitIdle();
+  cleanupVulkan();
+}
+
+void GraphicsContext::drawFrame() {
+  (void)device.waitForFences(submit_fence, true, UINT64_MAX);
+  device.resetFences(submit_fence);
+
+  vk::Result res;
+  uint32_t image;
+  std::tie(res, image) =
+      device.acquireNextImageKHR(swapchain_data.swapchain, UINT64_MAX, acquire_semaphore);
+
+  command_buffer.reset();
+  recordCommandBuffer(command_buffer, image);
+
+  vk::Semaphore wait_semaphores[] = {acquire_semaphore};
+  vk::PipelineStageFlags wait_stages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+  vk::Semaphore signal_semaphores[] = {render_semaphore};
+  vk::SubmitInfo submit_info{
+      .waitSemaphoreCount = 1,
+      .pWaitSemaphores = wait_semaphores,
+      .pWaitDstStageMask = wait_stages,
+      .commandBufferCount = 1,
+      .pCommandBuffers = &command_buffer,
+      .signalSemaphoreCount = 1,
+      .pSignalSemaphores = signal_semaphores,
+  };
+  queue.submit(submit_info, submit_fence);
+
+  vk::PresentInfoKHR present_info{
+      .waitSemaphoreCount = 1,
+      .pWaitSemaphores = signal_semaphores,
+      .swapchainCount = 1,
+      .pSwapchains = &swapchain_data.swapchain,
+      .pImageIndices = &image,
+  };
+  res = queue.presentKHR(present_info);
+}
 
 void GraphicsContext::initVulkan() {
   // initialize function pointers
@@ -80,9 +127,39 @@ void GraphicsContext::initVulkan() {
   pickPhysicalDevice();
   createDevice();
   createSwapChain();
+  createRenderPass();
+  createGraphicsPipeline();
+  createFramebuffers();
+  createCommandPool();
+  createCommandBuffer();
+  createSyncObjects();
 }
 
 void TE::GraphicsContext::cleanupVulkan() {
+  device.destroySemaphore(acquire_semaphore);
+  device.destroySemaphore(render_semaphore);
+  device.destroyFence(submit_fence);
+
+  if (command_pool) {
+    device.destroyCommandPool(command_pool);
+  }
+
+  for (auto framebuffer : swapchain_data.framebuffers) {
+    device.destroyFramebuffer(framebuffer);
+  }
+
+  if (graphics_pipeline) {
+    device.destroyPipeline(graphics_pipeline);
+  }
+
+  if (pipeline_layout) {
+    device.destroyPipelineLayout(pipeline_layout);
+  }
+
+  if (render_pass) {
+    device.destroyRenderPass(render_pass);
+  }
+
   for (auto image_view : swapchain_data.image_views) {
     device.destroyImageView(image_view);
   }
@@ -119,7 +196,7 @@ void GraphicsContext::createInstance() {
       .applicationVersion = 1,
       .pEngineName = "ToyEngine",
       .engineVersion = 1,
-      .apiVersion = VK_API_VERSION_1_0,
+      .apiVersion = VK_API_VERSION_1_3,
   };
 
   auto extensions = getRequiredInstanceExtensions();
@@ -304,5 +381,213 @@ vk::SurfaceFormatKHR GraphicsContext::selectSurfaceFormat(
   return it != available.end() ? *it : available[0];
 }
 
-void GraphicsContext::createGraphicsPipeline() {}
+void GraphicsContext::createRenderPass() {
+  vk::AttachmentDescription color_attachment{
+      .format = swapchain_data.format,
+      .samples = vk::SampleCountFlagBits::e1,
+      .loadOp = vk::AttachmentLoadOp::eClear,
+      .storeOp = vk::AttachmentStoreOp::eStore,
+      .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+      .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+      .initialLayout = vk::ImageLayout::eUndefined,
+      .finalLayout = vk::ImageLayout::ePresentSrcKHR,
+  };
+
+  vk::AttachmentReference color_attachment_ref{
+      .attachment = 0,
+      .layout = vk::ImageLayout::eColorAttachmentOptimal,
+  };
+
+  vk::SubpassDescription subpass{
+      .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+      .colorAttachmentCount = 1,
+      .pColorAttachments = &color_attachment_ref,
+  };
+
+  vk::SubpassDependency dependency{
+      .srcSubpass = vk::SubpassExternal,
+      .dstSubpass = 0,
+      .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+      .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+      .srcAccessMask = vk::AccessFlagBits::eNone,
+      .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
+  };
+
+  vk::RenderPassCreateInfo render_pass_info{
+      .attachmentCount = 1,
+      .pAttachments = &color_attachment,
+      .subpassCount = 1,
+      .pSubpasses = &subpass,
+      .dependencyCount = 1,
+      .pDependencies = &dependency,
+  };
+
+  render_pass = device.createRenderPass(render_pass_info);
+}
+
+void GraphicsContext::createGraphicsPipeline() {
+  std::vector<vk::DynamicState> dynamic_states{
+      vk::DynamicState::eViewport,
+      vk::DynamicState::eScissor,
+  };
+
+  vk::PipelineDynamicStateCreateInfo dynamic_state{
+      .dynamicStateCount = static_cast<uint32_t>(dynamic_states.size()),
+      .pDynamicStates = dynamic_states.data(),
+  };
+
+  vk::PipelineVertexInputStateCreateInfo vertex_input;
+
+  vk::PipelineInputAssemblyStateCreateInfo input_assembly{
+      .topology = vk::PrimitiveTopology::eTriangleList,
+      .primitiveRestartEnable = vk::False,
+  };
+
+  vk::PipelineViewportStateCreateInfo viewport{
+      .viewportCount = 1,
+      .scissorCount = 1,
+  };
+
+  vk::PipelineRasterizationStateCreateInfo rasterization{
+      .depthClampEnable = vk::False,
+      .rasterizerDiscardEnable = vk::False,
+      .polygonMode = vk::PolygonMode::eFill,
+      .cullMode = vk::CullModeFlagBits::eBack,
+      .frontFace = vk::FrontFace::eClockwise,
+      .depthBiasEnable = vk::False,
+      .lineWidth = 1.0f,
+  };
+
+  vk::PipelineMultisampleStateCreateInfo multisampling{
+      .rasterizationSamples = vk::SampleCountFlagBits::e1,
+      .sampleShadingEnable = vk::False,
+  };
+
+  vk::PipelineDepthStencilStateCreateInfo depth_stencil;
+
+  vk::PipelineColorBlendAttachmentState blend_attachment{
+      .blendEnable = vk::False,
+      .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+                        vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+  };
+
+  vk::PipelineColorBlendStateCreateInfo color_blending{
+      .logicOpEnable = vk::False,
+      .attachmentCount = 1,
+      .pAttachments = &blend_attachment,
+  };
+
+  vk::PipelineLayoutCreateInfo pipeline_layout_info{};
+  pipeline_layout = device.createPipelineLayout(pipeline_layout_info);
+
+  std::vector<Shader> shaders{
+      {"triangle.vert", ShaderType::VERTEX},
+      {"triangle.frag", ShaderType::FRAGMENT},
+  };
+  std::vector<vk::PipelineShaderStageCreateInfo> shader_stages;
+  for (auto& shader : shaders) {
+    shader_stages.emplace_back(shader.getStageCreateInfo(device));
+  }
+
+  vk::GraphicsPipelineCreateInfo pipeline_info{
+      .stageCount = 2,
+      .pStages = shader_stages.data(),
+      .pVertexInputState = &vertex_input,
+      .pInputAssemblyState = &input_assembly,
+      .pViewportState = &viewport,
+      .pRasterizationState = &rasterization,
+      .pMultisampleState = &multisampling,
+      .pDepthStencilState = &depth_stencil,
+      .pColorBlendState = &color_blending,
+      .pDynamicState = &dynamic_state,
+      .layout = pipeline_layout,
+      .renderPass = render_pass,
+      .subpass = 0,
+  };
+
+  vk::Result res;  // TODO: check result
+  std::tie(res, graphics_pipeline) = device.createGraphicsPipeline(nullptr, pipeline_info);
+
+  for (auto& stage : shader_stages) {
+    device.destroyShaderModule(stage.module);
+  }
+}
+
+void GraphicsContext::createFramebuffers() {
+  swapchain_data.framebuffers.resize(swapchain_data.image_views.size());
+
+  for (size_t i = 0; i < swapchain_data.image_views.size(); i++) {
+    vk::ImageView attachments[] = {swapchain_data.image_views[i]};
+
+    vk::FramebufferCreateInfo framebuffer_info{
+        .renderPass = render_pass,
+        .attachmentCount = 1,
+        .pAttachments = attachments,
+        .width = swapchain_data.extent.width,
+        .height = swapchain_data.extent.height,
+        .layers = 1,
+    };
+
+    swapchain_data.framebuffers[i] = device.createFramebuffer(framebuffer_info);
+  }
+}
+
+void GraphicsContext::createCommandPool() {
+  vk::CommandPoolCreateInfo pool_info{
+      .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+      .queueFamilyIndex = graphics_queue_index,
+  };
+
+  command_pool = device.createCommandPool(pool_info);
+}
+
+void GraphicsContext::createCommandBuffer() {
+  vk::CommandBufferAllocateInfo alloc_info{
+      .commandPool = command_pool,
+      .level = vk::CommandBufferLevel::ePrimary,
+      .commandBufferCount = 1,
+  };
+
+  command_buffer = device.allocateCommandBuffers(alloc_info)[0];
+}
+
+void GraphicsContext::recordCommandBuffer(vk::CommandBuffer cmd, uint32_t image_index) {
+  vk::ClearValue clear_value{{{{0.01f, 0.01f, 0.033f, 1.0f}}}};
+
+  vk::Viewport viewport{
+      .x = 0.0f,
+      .y = 0.0f,
+      .width = static_cast<float>(swapchain_data.extent.width),
+      .height = static_cast<float>(swapchain_data.extent.height),
+      .minDepth = 0.0f,
+      .maxDepth = 1.0f,
+  };
+
+  vk::Rect2D scissor{{0, 0}, swapchain_data.extent};
+
+  vk::CommandBufferBeginInfo begin_info{.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+
+  vk::RenderPassBeginInfo render_pass_info{
+      .renderPass = render_pass,
+      .framebuffer = swapchain_data.framebuffers[image_index],
+      .renderArea = {{0, 0}, swapchain_data.extent},
+      .clearValueCount = 1,
+      .pClearValues = &clear_value,
+  };
+
+  cmd.begin(begin_info);
+  cmd.beginRenderPass(render_pass_info, vk::SubpassContents::eInline);
+  cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, graphics_pipeline);
+  cmd.setViewport(0, viewport);
+  cmd.setScissor(0, scissor);
+  cmd.draw(3, 1, 0, 0);
+  cmd.endRenderPass();
+  cmd.end();
+}
+
+void GraphicsContext::createSyncObjects() {
+  acquire_semaphore = device.createSemaphore({});
+  render_semaphore = device.createSemaphore({});
+  submit_fence = device.createFence({.flags = vk::FenceCreateFlagBits::eSignaled});
+}
 }  // namespace TE
