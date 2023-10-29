@@ -1,14 +1,10 @@
 #include "GraphicsContext.hpp"
 
-#include <cstdint>
-#include <map>
-#include <stdexcept>
-#include <vector>
 #include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_enums.hpp>
 
 #include "ToyEngine/Core/Application.hpp"
 #include "ToyEngine/Renderer/Shader.hpp"
+#include "tepch.hpp"
 
 // instantiate the default dispatcher
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
@@ -84,30 +80,33 @@ GraphicsContext::~GraphicsContext() {
 }
 
 void GraphicsContext::drawFrame() {
-  (void)device.waitForFences(submit_fence, true, UINT64_MAX);
-  device.resetFences(submit_fence);
+  auto& frame = frame_data[current_frame];
+  current_frame = (current_frame + 1) % max_frames_in_flight;
+
+  (void)device.waitForFences(frame.submit_fence, true, UINT64_MAX);
+  device.resetFences(frame.submit_fence);
 
   vk::Result res;
   uint32_t image;
   std::tie(res, image) =
-      device.acquireNextImageKHR(swapchain_data.swapchain, UINT64_MAX, acquire_semaphore);
+      device.acquireNextImageKHR(swapchain_data.swapchain, UINT64_MAX, frame.acquire_semaphore);
 
-  command_buffer.reset();
-  recordCommandBuffer(command_buffer, image);
+  frame.command_buffer.reset();
+  recordCommandBuffer(frame.command_buffer, image);
 
-  vk::Semaphore wait_semaphores[] = {acquire_semaphore};
+  vk::Semaphore wait_semaphores[] = {frame.acquire_semaphore};
   vk::PipelineStageFlags wait_stages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
-  vk::Semaphore signal_semaphores[] = {render_semaphore};
+  vk::Semaphore signal_semaphores[] = {frame.release_semaphore};
   vk::SubmitInfo submit_info{
       .waitSemaphoreCount = 1,
       .pWaitSemaphores = wait_semaphores,
       .pWaitDstStageMask = wait_stages,
       .commandBufferCount = 1,
-      .pCommandBuffers = &command_buffer,
+      .pCommandBuffers = &frame.command_buffer,
       .signalSemaphoreCount = 1,
       .pSignalSemaphores = signal_semaphores,
   };
-  queue.submit(submit_info, submit_fence);
+  queue.submit(submit_info, frame.submit_fence);
 
   vk::PresentInfoKHR present_info{
       .waitSemaphoreCount = 1,
@@ -130,18 +129,15 @@ void GraphicsContext::initVulkan() {
   createRenderPass();
   createGraphicsPipeline();
   createFramebuffers();
-  createCommandPool();
-  createCommandBuffer();
-  createSyncObjects();
+  createFrameData();
 }
 
 void TE::GraphicsContext::cleanupVulkan() {
-  device.destroySemaphore(acquire_semaphore);
-  device.destroySemaphore(render_semaphore);
-  device.destroyFence(submit_fence);
-
-  if (command_pool) {
-    device.destroyCommandPool(command_pool);
+  for (auto& frame : frame_data) {
+    device.destroySemaphore(frame.acquire_semaphore);
+    device.destroySemaphore(frame.release_semaphore);
+    device.destroyFence(frame.submit_fence);
+    device.destroyCommandPool(frame.command_pool);
   }
 
   for (auto framebuffer : swapchain_data.framebuffers) {
@@ -532,23 +528,28 @@ void GraphicsContext::createFramebuffers() {
   }
 }
 
-void GraphicsContext::createCommandPool() {
+void GraphicsContext::createFrameData() {
+  max_frames_in_flight = 2;
+  frame_data.resize(max_frames_in_flight);
+
   vk::CommandPoolCreateInfo pool_info{
       .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
       .queueFamilyIndex = graphics_queue_index,
   };
 
-  command_pool = device.createCommandPool(pool_info);
-}
+  for (auto& frame : frame_data) {
+    frame.command_pool = device.createCommandPool(pool_info);
+    frame.submit_fence = device.createFence({.flags = vk::FenceCreateFlagBits::eSignaled});
+    frame.acquire_semaphore = device.createSemaphore({});
+    frame.release_semaphore = device.createSemaphore({});
 
-void GraphicsContext::createCommandBuffer() {
-  vk::CommandBufferAllocateInfo alloc_info{
-      .commandPool = command_pool,
-      .level = vk::CommandBufferLevel::ePrimary,
-      .commandBufferCount = 1,
-  };
-
-  command_buffer = device.allocateCommandBuffers(alloc_info)[0];
+    vk::CommandBufferAllocateInfo alloc_info{
+        .commandPool = frame.command_pool,
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = 1,
+    };
+    frame.command_buffer = device.allocateCommandBuffers(alloc_info)[0];
+  }
 }
 
 void GraphicsContext::recordCommandBuffer(vk::CommandBuffer cmd, uint32_t image_index) {
@@ -583,11 +584,5 @@ void GraphicsContext::recordCommandBuffer(vk::CommandBuffer cmd, uint32_t image_
   cmd.draw(3, 1, 0, 0);
   cmd.endRenderPass();
   cmd.end();
-}
-
-void GraphicsContext::createSyncObjects() {
-  acquire_semaphore = device.createSemaphore({});
-  render_semaphore = device.createSemaphore({});
-  submit_fence = device.createFence({.flags = vk::FenceCreateFlagBits::eSignaled});
 }
 }  // namespace TE

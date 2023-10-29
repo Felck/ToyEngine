@@ -1,7 +1,7 @@
+#pragma once
+
 #include <vector>
 #include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_enums.hpp>
-#include <vulkan/vulkan_handles.hpp>
 
 #include "ToyEngine/Core/Window.hpp"
 #include "ToyEngine/Renderer/Shader.hpp"
@@ -28,10 +28,8 @@ class GraphicsContext {
   void createRenderPass();
   void createGraphicsPipeline();
   void createFramebuffers();
-  void createCommandPool();
-  void createCommandBuffer();
+  void createFrameData();
   void recordCommandBuffer(vk::CommandBuffer buffer, uint32_t image_index);
-  void createSyncObjects();
 
   struct SwapchainData {
     vk::SwapchainKHR swapchain;
@@ -41,7 +39,18 @@ class GraphicsContext {
     std::vector<vk::Framebuffer> framebuffers;
   };
 
+  struct FrameData {
+    vk::CommandPool command_pool;
+    vk::CommandBuffer command_buffer;
+    vk::Fence submit_fence;
+    vk::Semaphore acquire_semaphore;
+    vk::Semaphore release_semaphore;
+  };
+
   GLFWwindow* window;
+  uint32_t max_frames_in_flight;
+  uint32_t current_frame = 0;
+
   vk::Instance instance;
   vk::PhysicalDevice gpu;
   vk::Device device;
@@ -50,14 +59,10 @@ class GraphicsContext {
   vk::RenderPass render_pass;
   vk::PipelineLayout pipeline_layout;
   vk::Pipeline graphics_pipeline;
-  vk::CommandPool command_pool;
-  vk::CommandBuffer command_buffer;
   SwapchainData swapchain_data;
   uint32_t graphics_queue_index;
   vk::DebugUtilsMessengerEXT debug_messenger;
 
-  vk::Semaphore acquire_semaphore;
-  vk::Semaphore render_semaphore;
-  vk::Fence submit_fence;
+  std::vector<FrameData> frame_data;
 };
 }  // namespace TE
