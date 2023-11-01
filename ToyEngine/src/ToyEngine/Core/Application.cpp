@@ -1,7 +1,6 @@
 #include "Application.hpp"
 
 #include "ToyEngine/Core/Window.hpp"
-#include "ToyEngine/Renderer/GraphicsContext.hpp"
 
 namespace TE {
 
@@ -16,15 +15,13 @@ Application::Application() {
 Application::~Application() {}
 
 void Application::run() {
-  GraphicsContext r(*window);
-
   while (running) {
     for (auto layer : layerStack) {
       layer->onUpdate();
     }
     window->onUpdate();
 
-    r.drawFrame();
+    window->getContext().drawFrame();
   }
 }
 

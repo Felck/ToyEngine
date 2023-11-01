@@ -25,7 +25,7 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(GLFW_INSTALL OFF CACHE BOOL  "" FORCE)
 set(GLFW_VULKAN_STATIC ON CACHE BOOL  "" FORCE)
 
-target_compile_definitions(toyengine PRIVATE GLFW_INCLUDE_NONE)
+target_compile_definitions(toyengine PRIVATE GLFW_INCLUDE_VULKAN)
 
 add_subdirectory(vendor/GLFW)
 target_link_libraries(toyengine glfw)

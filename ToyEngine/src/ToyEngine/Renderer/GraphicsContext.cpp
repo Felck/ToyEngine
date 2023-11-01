@@ -1,9 +1,11 @@
 #include "GraphicsContext.hpp"
 
+#include <GLFW/glfw3.h>
+
 #include <vulkan/vulkan.hpp>
 
-#include "ToyEngine/Core/Application.hpp"
 #include "ToyEngine/Renderer/Shader.hpp"
+#include "ToyEngine/Renderer/SwapChain.hpp"
 #include "tepch.hpp"
 
 // instantiate the default dispatcher
@@ -69,8 +71,7 @@ std::vector<const char*> getRequiredInstanceExtensions() {
 
 namespace TE {
 
-GraphicsContext::GraphicsContext(Window& window)
-    : window(static_cast<GLFWwindow*>(window.getNativeWindow())) {
+GraphicsContext::GraphicsContext(GLFWwindow* window) : window(window), swapchain(*this) {
   initVulkan();
 }
 
@@ -84,12 +85,32 @@ void GraphicsContext::drawFrame() {
   current_frame = (current_frame + 1) % max_frames_in_flight;
 
   (void)device.waitForFences(frame.submit_fence, true, UINT64_MAX);
-  device.resetFences(frame.submit_fence);
 
   vk::Result res;
   uint32_t image;
   std::tie(res, image) =
-      device.acquireNextImageKHR(swapchain_data.swapchain, UINT64_MAX, frame.acquire_semaphore);
+      device.acquireNextImageKHR(swapchain.get(), UINT64_MAX, frame.acquire_semaphore);
+  if (res == vk::Result::eErrorOutOfDateKHR) {
+    swapchain.resize();
+    return;
+  } else if (res == vk::Result::eSuboptimalKHR) {
+    vk::PipelineStageFlags psf[] = {vk::PipelineStageFlagBits::eBottomOfPipe};
+    vk::SubmitInfo submit_info{
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &frame.acquire_semaphore,
+        .pWaitDstStageMask = psf,
+    };
+    // clear signaled semaphore
+    queue.submit(submit_info, VK_NULL_HANDLE);
+
+    swapchain.resize();
+    return;
+  } else if (res != vk::Result::eSuccess) {
+    queue.waitIdle();
+    throw std::runtime_error("Failed to acquire swap chain image!");
+  }
+
+  device.resetFences(frame.submit_fence);
 
   frame.command_buffer.reset();
   recordCommandBuffer(frame.command_buffer, image);
@@ -112,7 +133,7 @@ void GraphicsContext::drawFrame() {
       .waitSemaphoreCount = 1,
       .pWaitSemaphores = signal_semaphores,
       .swapchainCount = 1,
-      .pSwapchains = &swapchain_data.swapchain,
+      .pSwapchains = &swapchain.get(),
       .pImageIndices = &image,
   };
   res = queue.presentKHR(present_info);
@@ -125,10 +146,10 @@ void GraphicsContext::initVulkan() {
   createSurface();
   pickPhysicalDevice();
   createDevice();
-  createSwapChain();
+  swapchain.init();
   createRenderPass();
   createGraphicsPipeline();
-  createFramebuffers();
+  swapchain.createFramebuffers(render_pass);
   createFrameData();
 }
 
@@ -138,10 +159,6 @@ void TE::GraphicsContext::cleanupVulkan() {
     device.destroySemaphore(frame.release_semaphore);
     device.destroyFence(frame.submit_fence);
     device.destroyCommandPool(frame.command_pool);
-  }
-
-  for (auto framebuffer : swapchain_data.framebuffers) {
-    device.destroyFramebuffer(framebuffer);
   }
 
   if (graphics_pipeline) {
@@ -156,13 +173,7 @@ void TE::GraphicsContext::cleanupVulkan() {
     device.destroyRenderPass(render_pass);
   }
 
-  for (auto image_view : swapchain_data.image_views) {
-    device.destroyImageView(image_view);
-  }
-
-  if (swapchain_data.swapchain) {
-    device.destroySwapchainKHR(swapchain_data.swapchain);
-  }
+  swapchain.destroy();
 
   if (device) {
     device.destroy();
@@ -299,87 +310,9 @@ void GraphicsContext::createDevice() {
   queue = device.getQueue(graphics_queue_index, 0);
 }
 
-void GraphicsContext::createSwapChain() {
-  auto capabilities = gpu.getSurfaceCapabilitiesKHR(surface);
-
-  // format
-  auto format = selectSurfaceFormat(
-      {vk::Format::eR8G8B8A8Srgb, vk::Format::eB8G8R8A8Srgb, vk::Format::eA8B8G8R8SrgbPack32});
-
-  // extent
-  vk::Extent2D extent;
-  if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
-    extent = capabilities.currentExtent;
-  } else {
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-
-    extent.width = std::clamp(static_cast<uint32_t>(width), capabilities.minImageExtent.width,
-                              capabilities.maxImageExtent.width);
-    extent.height = std::clamp(static_cast<uint32_t>(height), capabilities.minImageExtent.height,
-                               capabilities.maxImageExtent.height);
-  }
-
-  // images
-  uint32_t image_count = capabilities.minImageCount + 1;
-  if ((capabilities.maxImageCount > 0) && (image_count > capabilities.maxImageCount)) {
-    image_count = capabilities.maxImageCount;
-  }
-
-  vk::SwapchainCreateInfoKHR swapchain_create_info{
-      .surface = surface,
-      .minImageCount = image_count,
-      .imageFormat = format.format,
-      .imageColorSpace = format.colorSpace,
-      .imageExtent = extent,
-      .imageArrayLayers = 1,
-      .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
-      .imageSharingMode = vk::SharingMode::eExclusive,
-      .preTransform = capabilities.currentTransform,
-      .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
-      .presentMode = vk::PresentModeKHR::eFifo,
-      .clipped = true,
-  };
-  swapchain_data.swapchain = device.createSwapchainKHR(swapchain_create_info);
-  swapchain_data.format = format.format;
-  swapchain_data.extent = extent;
-
-  std::vector<vk::Image> images = device.getSwapchainImagesKHR(swapchain_data.swapchain);
-  for (const auto& image : images) {
-    vk::ImageViewCreateInfo image_view_create_info{
-        .image = image,
-        .viewType = vk::ImageViewType::e2D,
-        .format = swapchain_data.format,
-        .components =
-            {
-                vk::ComponentSwizzle::eR,
-                vk::ComponentSwizzle::eG,
-                vk::ComponentSwizzle::eB,
-                vk::ComponentSwizzle::eA,
-            },
-        .subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1},
-    };
-    swapchain_data.image_views.push_back(device.createImageView(image_view_create_info));
-  }
-}
-
-vk::SurfaceFormatKHR GraphicsContext::selectSurfaceFormat(
-    const std::vector<vk::Format>& preferred) {
-  auto available = gpu.getSurfaceFormatsKHR(surface);
-
-  auto it =
-      std::find_if(available.begin(), available.end(), [&preferred](const auto& surface_format) {
-        return std::any_of(
-            preferred.begin(), preferred.end(),
-            [&surface_format](const auto format) { return format == surface_format.format; });
-      });
-
-  return it != available.end() ? *it : available[0];
-}
-
 void GraphicsContext::createRenderPass() {
   vk::AttachmentDescription color_attachment{
-      .format = swapchain_data.format,
+      .format = swapchain.getFormat(),
       .samples = vk::SampleCountFlagBits::e1,
       .loadOp = vk::AttachmentLoadOp::eClear,
       .storeOp = vk::AttachmentStoreOp::eStore,
@@ -509,25 +442,6 @@ void GraphicsContext::createGraphicsPipeline() {
   }
 }
 
-void GraphicsContext::createFramebuffers() {
-  swapchain_data.framebuffers.resize(swapchain_data.image_views.size());
-
-  for (size_t i = 0; i < swapchain_data.image_views.size(); i++) {
-    vk::ImageView attachments[] = {swapchain_data.image_views[i]};
-
-    vk::FramebufferCreateInfo framebuffer_info{
-        .renderPass = render_pass,
-        .attachmentCount = 1,
-        .pAttachments = attachments,
-        .width = swapchain_data.extent.width,
-        .height = swapchain_data.extent.height,
-        .layers = 1,
-    };
-
-    swapchain_data.framebuffers[i] = device.createFramebuffer(framebuffer_info);
-  }
-}
-
 void GraphicsContext::createFrameData() {
   max_frames_in_flight = 2;
   frame_data.resize(max_frames_in_flight);
@@ -554,24 +468,25 @@ void GraphicsContext::createFrameData() {
 
 void GraphicsContext::recordCommandBuffer(vk::CommandBuffer cmd, uint32_t image_index) {
   vk::ClearValue clear_value{{{{0.01f, 0.01f, 0.033f, 1.0f}}}};
+  auto extent = swapchain.getExtent();
 
   vk::Viewport viewport{
       .x = 0.0f,
       .y = 0.0f,
-      .width = static_cast<float>(swapchain_data.extent.width),
-      .height = static_cast<float>(swapchain_data.extent.height),
+      .width = static_cast<float>(extent.width),
+      .height = static_cast<float>(extent.height),
       .minDepth = 0.0f,
       .maxDepth = 1.0f,
   };
 
-  vk::Rect2D scissor{{0, 0}, swapchain_data.extent};
+  vk::Rect2D scissor{{0, 0}, extent};
 
   vk::CommandBufferBeginInfo begin_info{.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
 
   vk::RenderPassBeginInfo render_pass_info{
       .renderPass = render_pass,
-      .framebuffer = swapchain_data.framebuffers[image_index],
-      .renderArea = {{0, 0}, swapchain_data.extent},
+      .framebuffer = swapchain.getFramebuffer(image_index),
+      .renderArea = {{0, 0}, extent},
       .clearValueCount = 1,
       .pClearValues = &clear_value,
   };

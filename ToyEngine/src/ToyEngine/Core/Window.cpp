@@ -5,6 +5,8 @@
 #include "ToyEngine/Events/KeyEvent.hpp"
 #include "ToyEngine/Events/MouseEvent.hpp"
 #include "ToyEngine/Events/WindowEvent.hpp"
+#include "ToyEngine/Renderer/GraphicsContext.hpp"
+#include "tepch.hpp"
 
 namespace TE {
 
@@ -12,7 +14,10 @@ std::unique_ptr<Window> Window::create(const WindowProps& props) {
   return std::make_unique<Window>(props);
 }
 
-Window::Window(const WindowProps& props) { init(props); }
+Window::Window(const WindowProps& props) {
+  init(props);
+  graphics_context = std::make_unique<GraphicsContext>(window);
+}
 
 Window::~Window() { shutdown(); }
 
@@ -26,7 +31,6 @@ void Window::init(const WindowProps& props) {
   glfwInit();
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
   window =
       glfwCreateWindow((int)props.Width, (int)props.Height, data.title.c_str(), nullptr, nullptr);
@@ -40,13 +44,13 @@ void Window::init(const WindowProps& props) {
     data.height = height;
 
     WindowResizeEvent event(width, height);
-    data.eventCallback(event);
+    data.event_callback(event);
   });
 
   glfwSetWindowCloseCallback(window, [](GLFWwindow* window) {
     WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
     WindowCloseEvent event;
-    data.eventCallback(event);
+    data.event_callback(event);
   });
 
   glfwSetKeyCallback(window, [](GLFWwindow* window, int key, [[maybe_unused]] int scancode,
@@ -56,17 +60,17 @@ void Window::init(const WindowProps& props) {
     switch (action) {
       case GLFW_PRESS: {
         KeyPressedEvent event(key, 0);
-        data.eventCallback(event);
+        data.event_callback(event);
         break;
       }
       case GLFW_RELEASE: {
         KeyReleasedEvent event(key);
-        data.eventCallback(event);
+        data.event_callback(event);
         break;
       }
       case GLFW_REPEAT: {
         KeyPressedEvent event(key, 1);
-        data.eventCallback(event);
+        data.event_callback(event);
         break;
       }
     }
@@ -79,12 +83,12 @@ void Window::init(const WindowProps& props) {
         switch (action) {
           case GLFW_PRESS: {
             MouseButtonPressedEvent event(button);
-            data.eventCallback(event);
+            data.event_callback(event);
             break;
           }
           case GLFW_RELEASE: {
             MouseButtonReleasedEvent event(button);
-            data.eventCallback(event);
+            data.event_callback(event);
             break;
           }
         }
@@ -94,14 +98,14 @@ void Window::init(const WindowProps& props) {
     WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 
     MouseScrolledEvent event((float)xOffset, (float)yOffset);
-    data.eventCallback(event);
+    data.event_callback(event);
   });
 
   glfwSetCursorPosCallback(window, [](GLFWwindow* window, double xPos, double yPos) {
     WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 
     MouseMovedEvent event((float)xPos, (float)yPos);
-    data.eventCallback(event);
+    data.event_callback(event);
   });
 }
 

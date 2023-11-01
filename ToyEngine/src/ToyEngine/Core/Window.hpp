@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 
 #include "ToyEngine/Events/Event.hpp"
+#include "ToyEngine/Renderer/GraphicsContext.hpp"
 #include "tepch.hpp"
 
 namespace TE {
@@ -28,9 +29,10 @@ class Window {
   inline uint32_t getWidth() const { return data.width; }
   inline uint32_t getHeight() const { return data.height; }
 
-  inline void setEventCallback(const EventCallbackFn& callback) { data.eventCallback = callback; }
+  inline void setEventCallback(const EventCallbackFn& callback) { data.event_callback = callback; }
 
   inline void* getNativeWindow() const { return window; }
+  inline GraphicsContext& getContext() const { return *graphics_context; }
 
   static std::unique_ptr<Window> create(const WindowProps& props = WindowProps());
 
@@ -38,16 +40,16 @@ class Window {
   void init(const WindowProps& props);
   void shutdown();
 
-  GLFWwindow* window;
-
   struct WindowData {
     std::string title;
     uint32_t width, height;
 
-    EventCallbackFn eventCallback;
+    EventCallbackFn event_callback;
   };
 
+  GLFWwindow* window;
   WindowData data;
+  std::unique_ptr<GraphicsContext> graphics_context;
 };
 
 }  // namespace TE

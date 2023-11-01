@@ -1,16 +1,17 @@
 #pragma once
 
-#include <vector>
+#include <GLFW/glfw3.h>
+
 #include <vulkan/vulkan.hpp>
 
-#include "ToyEngine/Core/Window.hpp"
 #include "ToyEngine/Renderer/Shader.hpp"
+#include "ToyEngine/Renderer/SwapChain.hpp"
 #include "tepch.hpp"
 
 namespace TE {
 class GraphicsContext {
  public:
-  GraphicsContext(Window& window);
+  GraphicsContext(GLFWwindow* native_window);
   ~GraphicsContext();
 
   void drawFrame();
@@ -23,21 +24,10 @@ class GraphicsContext {
   void createSurface();
   void pickPhysicalDevice();
   void createDevice();
-  void createSwapChain();
-  vk::SurfaceFormatKHR selectSurfaceFormat(std::vector<vk::Format> const& preferred_formats);
   void createRenderPass();
   void createGraphicsPipeline();
-  void createFramebuffers();
   void createFrameData();
   void recordCommandBuffer(vk::CommandBuffer buffer, uint32_t image_index);
-
-  struct SwapchainData {
-    vk::SwapchainKHR swapchain;
-    vk::Format format;
-    vk::Extent2D extent;
-    std::vector<vk::ImageView> image_views;
-    std::vector<vk::Framebuffer> framebuffers;
-  };
 
   struct FrameData {
     vk::CommandPool command_pool;
@@ -59,10 +49,12 @@ class GraphicsContext {
   vk::RenderPass render_pass;
   vk::PipelineLayout pipeline_layout;
   vk::Pipeline graphics_pipeline;
-  SwapchainData swapchain_data;
+  SwapChain swapchain;
   uint32_t graphics_queue_index;
   vk::DebugUtilsMessengerEXT debug_messenger;
 
   std::vector<FrameData> frame_data;
+
+  friend class SwapChain;
 };
 }  // namespace TE
