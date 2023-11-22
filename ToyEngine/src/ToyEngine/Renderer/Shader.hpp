@@ -16,7 +16,7 @@ class Shader {
  public:
   Shader(const std::string& filename, ShaderType type);
 
-  vk::PipelineShaderStageCreateInfo getStageCreateInfo(vk::Device& device);
+  vk::PipelineShaderStageCreateInfo getStageCreateInfo(vk::Device device) const;
 
  private:
   std::vector<char> code;

@@ -77,7 +77,7 @@ void SwapChain::resize() {
 
   destroy();
   init();
-  createFramebuffers(*render_pass);
+  createFramebuffers(render_pass);
 }
 
 void SwapChain::destroy() {
@@ -93,8 +93,8 @@ void SwapChain::destroy() {
   }
 }
 
-void SwapChain::createFramebuffers(const vk::RenderPass& render_pass) {
-  this->render_pass = &render_pass;
+void SwapChain::createFramebuffers(vk::RenderPass render_pass) {
+  this->render_pass = render_pass;
   this->framebuffers.resize(this->image_views.size());
 
   for (size_t i = 0; i < this->image_views.size(); i++) {

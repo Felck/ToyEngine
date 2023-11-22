@@ -6,6 +6,7 @@
 
 #include "ToyEngine/Renderer/Shader.hpp"
 #include "ToyEngine/Renderer/SwapChain.hpp"
+#include "ToyEngine/Renderer/VertexArray.hpp"
 #include "tepch.hpp"
 
 namespace TE {
@@ -13,6 +14,11 @@ class GraphicsContext {
  public:
   GraphicsContext(GLFWwindow* native_window);
   ~GraphicsContext();
+
+  inline vk::Device getDevice() const { return device; };
+  inline vk::PhysicalDevice getGPU() const { return gpu; };
+  inline vk::CommandPool getCommandPool() const { return command_pool; };
+  inline vk::Queue getQueue() const { return queue; };
 
   void drawFrame();
 
@@ -45,6 +51,7 @@ class GraphicsContext {
   vk::PhysicalDevice gpu;
   vk::Device device;
   vk::Queue queue;
+  vk::CommandPool command_pool;  // transient command pool
   vk::SurfaceKHR surface;
   vk::RenderPass render_pass;
   vk::PipelineLayout pipeline_layout;
@@ -54,6 +61,8 @@ class GraphicsContext {
   vk::DebugUtilsMessengerEXT debug_messenger;
 
   std::vector<FrameData> frame_data;
+
+  std::unique_ptr<VertexArray> vertex_array;
 
   friend class SwapChain;
 };

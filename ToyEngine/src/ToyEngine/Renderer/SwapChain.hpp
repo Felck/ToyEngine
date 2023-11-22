@@ -14,7 +14,7 @@ class SwapChain {
   void init();
   void resize();
   void destroy();
-  void createFramebuffers(const vk::RenderPass& render_pass);
+  void createFramebuffers(vk::RenderPass render_pass);
   void destroyFramebuffers();
 
   inline vk::SwapchainKHR& get() { return this->swapchain; }
@@ -26,7 +26,7 @@ class SwapChain {
   vk::SurfaceFormatKHR selectSurfaceFormat(const std::vector<vk::Format>& preferred);
 
   GraphicsContext& ctx;
-  const vk::RenderPass* render_pass = nullptr;
+  vk::RenderPass render_pass;
   vk::SwapchainKHR swapchain;
   vk::Format format;
   vk::Extent2D extent;

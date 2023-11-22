@@ -22,7 +22,7 @@ Shader::Shader(const std::string& filename, ShaderType type) : type(type) {
   file.close();
 }
 
-vk::PipelineShaderStageCreateInfo Shader::getStageCreateInfo(vk::Device& device) {
+vk::PipelineShaderStageCreateInfo Shader::getStageCreateInfo(vk::Device device) const {
   vk::ShaderStageFlagBits stage;
   switch (type) {
     case ShaderType::VERTEX:
@@ -37,7 +37,7 @@ vk::PipelineShaderStageCreateInfo Shader::getStageCreateInfo(vk::Device& device)
 
   vk::ShaderModuleCreateInfo module_info{
       .codeSize = code.size(),
-      .pCode = reinterpret_cast<uint32_t*>(code.data()),  // TODO: remove UB
+      .pCode = reinterpret_cast<const uint32_t*>(code.data()),  // TODO: remove UB
   };
 
   vk::ShaderModule module = device.createShaderModule(module_info);

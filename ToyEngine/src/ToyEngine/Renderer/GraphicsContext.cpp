@@ -6,6 +6,7 @@
 
 #include "ToyEngine/Renderer/Shader.hpp"
 #include "ToyEngine/Renderer/SwapChain.hpp"
+#include "ToyEngine/Renderer/VertexArray.hpp"
 #include "tepch.hpp"
 
 // instantiate the default dispatcher
@@ -73,6 +74,8 @@ namespace TE {
 
 GraphicsContext::GraphicsContext(GLFWwindow* window) : window(window), swapchain(*this) {
   initVulkan();
+  vertex_array = std::make_unique<VertexArray>(
+      *this, std::vector<float>{0.0, -0.5, 0.5, 0.5, -0.5, 0.5}, std::vector<uint16_t>{0, 1, 2});
 }
 
 GraphicsContext::~GraphicsContext() {
@@ -101,7 +104,7 @@ void GraphicsContext::drawFrame() {
         .pWaitDstStageMask = psf,
     };
     // clear signaled semaphore
-    queue.submit(submit_info, VK_NULL_HANDLE);
+    queue.submit(submit_info);
 
     swapchain.resize();
     return;
@@ -112,7 +115,7 @@ void GraphicsContext::drawFrame() {
 
   device.resetFences(frame.submit_fence);
 
-  frame.command_buffer.reset();
+  device.resetCommandPool(frame.command_pool);
   recordCommandBuffer(frame.command_buffer, image);
 
   vk::Semaphore wait_semaphores[] = {frame.acquire_semaphore};
@@ -154,6 +157,8 @@ void GraphicsContext::initVulkan() {
 }
 
 void TE::GraphicsContext::cleanupVulkan() {
+  vertex_array = nullptr;
+
   for (auto& frame : frame_data) {
     device.destroySemaphore(frame.acquire_semaphore);
     device.destroySemaphore(frame.release_semaphore);
@@ -174,6 +179,10 @@ void TE::GraphicsContext::cleanupVulkan() {
   }
 
   swapchain.destroy();
+
+  if (command_pool) {
+    device.destroyCommandPool(command_pool);
+  }
 
   if (device) {
     device.destroy();
@@ -308,6 +317,12 @@ void GraphicsContext::createDevice() {
   VULKAN_HPP_DEFAULT_DISPATCHER.init(device);
 
   queue = device.getQueue(graphics_queue_index, 0);
+
+  vk::CommandPoolCreateInfo pool_info{
+      .flags = vk::CommandPoolCreateFlagBits::eTransient,
+      .queueFamilyIndex = graphics_queue_index,
+  };
+  command_pool = device.createCommandPool(pool_info);
 }
 
 void GraphicsContext::createRenderPass() {
@@ -365,7 +380,25 @@ void GraphicsContext::createGraphicsPipeline() {
       .pDynamicStates = dynamic_states.data(),
   };
 
-  vk::PipelineVertexInputStateCreateInfo vertex_input;
+  vk::VertexInputBindingDescription binding_desc{
+      .binding = 0,
+      .stride = sizeof(float) * 2,
+      .inputRate = vk::VertexInputRate::eVertex,
+  };
+
+  vk::VertexInputAttributeDescription attribute_desc{
+      .location = 0,
+      .binding = 0,
+      .format = vk::Format::eR32G32Sfloat,
+      .offset = 0,
+  };
+
+  vk::PipelineVertexInputStateCreateInfo vertex_input{
+      .vertexBindingDescriptionCount = 1,
+      .pVertexBindingDescriptions = &binding_desc,
+      .vertexAttributeDescriptionCount = 1,
+      .pVertexAttributeDescriptions = &attribute_desc,
+  };
 
   vk::PipelineInputAssemblyStateCreateInfo input_assembly{
       .topology = vk::PrimitiveTopology::eTriangleList,
@@ -447,7 +480,6 @@ void GraphicsContext::createFrameData() {
   frame_data.resize(max_frames_in_flight);
 
   vk::CommandPoolCreateInfo pool_info{
-      .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
       .queueFamilyIndex = graphics_queue_index,
   };
 
@@ -496,7 +528,8 @@ void GraphicsContext::recordCommandBuffer(vk::CommandBuffer cmd, uint32_t image_
   cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, graphics_pipeline);
   cmd.setViewport(0, viewport);
   cmd.setScissor(0, scissor);
-  cmd.draw(3, 1, 0, 0);
+  vertex_array->bind(cmd);
+  vertex_array->draw(cmd);
   cmd.endRenderPass();
   cmd.end();
 }
