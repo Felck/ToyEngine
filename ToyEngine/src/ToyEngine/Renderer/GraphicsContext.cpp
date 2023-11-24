@@ -4,6 +4,7 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include "ToyEngine/Renderer/Device.hpp"
 #include "ToyEngine/Renderer/Shader.hpp"
 #include "ToyEngine/Renderer/SwapChain.hpp"
 #include "ToyEngine/Renderer/VertexArray.hpp"
@@ -12,78 +13,58 @@
 // instantiate the default dispatcher
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-namespace {
-#ifdef ENABLE_VALIDATION_LAYERS
-const std::vector<const char*> VALIDATION_LAYERS = {"VK_LAYER_KHRONOS_validation"};
-
-bool validateLayers() {
-  auto available = vk::enumerateInstanceLayerProperties();
-
-  return !std::any_of(
-      VALIDATION_LAYERS.begin(), VALIDATION_LAYERS.end(), [&available](const auto layer) {
-        return !std::any_of(available.begin(), available.end(),
-                            [&layer](const auto& lp) { return strcmp(lp.layerName, layer) == 0; });
-      });
-
-  auto unavailable = std::find_if(
-      VALIDATION_LAYERS.begin(), VALIDATION_LAYERS.end(), [&available](const auto layer) {
-        return std::find_if(available.begin(), available.end(), [&layer](const auto& l) {
-                 return strcmp(l.layerName, layer) == 0;
-               }) == available.end();
-      });
-
-  return (unavailable == VALIDATION_LAYERS.end());
-}
-
-VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-    [[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData) {
-  std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
-
-  return VK_FALSE;
-}
-#endif
-
-bool validateExtensions(const std::vector<const char*>& required,
-                        const std::vector<vk::ExtensionProperties>& available) {
-  return !std::any_of(required.begin(), required.end(), [&available](const auto extension) {
-    return !std::any_of(available.begin(), available.end(), [&extension](const auto& ep) {
-      return strcmp(ep.extensionName, extension) == 0;
-    });
-  });
-}
-
-std::vector<const char*> getRequiredInstanceExtensions() {
-  // glfw extensions
-  uint32_t glfw_extension_count = 0;
-  const char** glfw_extensions;
-  glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
-
-  std::vector<const char*> extensions(glfw_extensions, glfw_extensions + glfw_extension_count);
-
-#ifdef ENABLE_VALIDATION_LAYERS
-  extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-#endif
-
-  return extensions;
-}
-}  // namespace
-
 namespace TE {
 
-GraphicsContext::GraphicsContext(GLFWwindow* window) : window(window), swapchain(*this) {
-  initVulkan();
+GraphicsContext::GraphicsContext(GLFWwindow* window) : device{window}, swapchain{window, device} {
+  // transient command pool
+  vk::CommandPoolCreateInfo pool_info{
+      .flags = vk::CommandPoolCreateFlagBits::eTransient,
+      .queueFamilyIndex = device.getGraphicsQueueIndex(),
+  };
+  command_pool = device.getDevice().createCommandPool(pool_info);
+
+  createRenderPass();
+  createGraphicsPipeline();
+  swapchain.createFramebuffers(render_pass);
+  createFrameData();
+
   vertex_array = std::make_unique<VertexArray>(
       *this, std::vector<float>{0.0, -0.5, 0.5, 0.5, -0.5, 0.5}, std::vector<uint16_t>{0, 1, 2});
 }
 
 GraphicsContext::~GraphicsContext() {
+  auto device = this->device.getDevice();
   device.waitIdle();
-  cleanupVulkan();
+
+  vertex_array = nullptr;
+
+  for (auto& frame : frame_data) {
+    device.destroySemaphore(frame.acquire_semaphore);
+    device.destroySemaphore(frame.release_semaphore);
+    device.destroyFence(frame.submit_fence);
+    device.destroyCommandPool(frame.command_pool);
+  }
+
+  if (graphics_pipeline) {
+    device.destroyPipeline(graphics_pipeline);
+  }
+
+  if (pipeline_layout) {
+    device.destroyPipelineLayout(pipeline_layout);
+  }
+
+  if (render_pass) {
+    device.destroyRenderPass(render_pass);
+  }
+
+  if (command_pool) {
+    device.destroyCommandPool(command_pool);
+  }
 }
 
 void GraphicsContext::drawFrame() {
+  auto device = this->device.getDevice();
+  auto queue = this->device.getQueue();
   auto& frame = frame_data[current_frame];
   current_frame = (current_frame + 1) % max_frames_in_flight;
 
@@ -142,189 +123,6 @@ void GraphicsContext::drawFrame() {
   res = queue.presentKHR(present_info);
 }
 
-void GraphicsContext::initVulkan() {
-  // initialize function pointers
-  VULKAN_HPP_DEFAULT_DISPATCHER.init();
-  createInstance();
-  createSurface();
-  pickPhysicalDevice();
-  createDevice();
-  swapchain.init();
-  createRenderPass();
-  createGraphicsPipeline();
-  swapchain.createFramebuffers(render_pass);
-  createFrameData();
-}
-
-void TE::GraphicsContext::cleanupVulkan() {
-  vertex_array = nullptr;
-
-  for (auto& frame : frame_data) {
-    device.destroySemaphore(frame.acquire_semaphore);
-    device.destroySemaphore(frame.release_semaphore);
-    device.destroyFence(frame.submit_fence);
-    device.destroyCommandPool(frame.command_pool);
-  }
-
-  if (graphics_pipeline) {
-    device.destroyPipeline(graphics_pipeline);
-  }
-
-  if (pipeline_layout) {
-    device.destroyPipelineLayout(pipeline_layout);
-  }
-
-  if (render_pass) {
-    device.destroyRenderPass(render_pass);
-  }
-
-  swapchain.destroy();
-
-  if (command_pool) {
-    device.destroyCommandPool(command_pool);
-  }
-
-  if (device) {
-    device.destroy();
-  }
-
-  if (surface) {
-    instance.destroySurfaceKHR(surface);
-  }
-
-  if (debug_messenger) {
-    instance.destroyDebugUtilsMessengerEXT(debug_messenger);
-  }
-
-  instance.destroy();
-}
-
-void GraphicsContext::createInstance() {
-#ifdef ENABLE_VALIDATION_LAYERS
-  if (!validateLayers()) {
-    throw std::runtime_error("Validation layers requested, but not available.");
-  }
-#endif
-
-  // TODO: query application/engine data
-  vk::ApplicationInfo application_info{
-      .pApplicationName = "VKApp",
-      .applicationVersion = 1,
-      .pEngineName = "ToyEngine",
-      .engineVersion = 1,
-      .apiVersion = VK_API_VERSION_1_3,
-  };
-
-  auto extensions = getRequiredInstanceExtensions();
-  auto available_extensions = vk::enumerateInstanceExtensionProperties();
-  if (!validateExtensions(extensions, available_extensions)) {
-    throw std::runtime_error("Required instance extensions are missing.");
-  }
-
-  vk::InstanceCreateInfo instance_create_info{
-      .pApplicationInfo = &application_info,
-      .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
-      .ppEnabledExtensionNames = extensions.data(),
-  };
-
-#ifdef ENABLE_VALIDATION_LAYERS
-  instance_create_info.enabledLayerCount = static_cast<uint32_t>(VALIDATION_LAYERS.size());
-  instance_create_info.ppEnabledLayerNames = VALIDATION_LAYERS.data();
-
-  vk::DebugUtilsMessengerCreateInfoEXT debug_utils_create_info{
-      .messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eError |
-                         vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning,
-      .messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
-                     vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
-      .pfnUserCallback = debugCallback,
-  };
-
-  instance_create_info.pNext = &debug_utils_create_info;
-#else
-  instance_create_info.enabledLayerCount = 0;
-#endif
-
-  instance = vk::createInstance(instance_create_info);
-
-  // initialize function pointers for instance
-  VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
-
-#ifdef ENABLE_VALIDATION_LAYERS
-  debug_messenger = instance.createDebugUtilsMessengerEXT(debug_utils_create_info);
-#endif
-}
-
-void GraphicsContext::createSurface() {
-  VkSurfaceKHR s;
-  if (glfwCreateWindowSurface(instance, window, nullptr, &s) != VK_SUCCESS) {
-    throw std::runtime_error("Failed to create window surface.");
-  }
-  surface = vk::SurfaceKHR(s);
-}
-
-void GraphicsContext::pickPhysicalDevice() {
-  std::vector<vk::PhysicalDevice> gpus = instance.enumeratePhysicalDevices();
-
-  bool found_graphics_queue_index = false;
-  for (size_t i = 0; i < gpus.size() && !found_graphics_queue_index; i++) {
-    gpu = gpus[i];
-
-    auto queue_family_properties = gpu.getQueueFamilyProperties();
-
-    if (queue_family_properties.empty()) {
-      throw std::runtime_error("No queue family found.");
-    }
-
-    for (uint32_t j = 0; j < static_cast<uint32_t>(queue_family_properties.size()); j++) {
-      auto supports_present = gpu.getSurfaceSupportKHR(j, surface);
-
-      if ((queue_family_properties[j].queueFlags & vk::QueueFlagBits::eGraphics) &&
-          supports_present) {
-        graphics_queue_index = j;
-        found_graphics_queue_index = true;
-        break;
-      }
-    }
-  }
-
-  if (!found_graphics_queue_index) {
-    throw std::runtime_error("Did not find suitable GPU.");
-  }
-}
-
-void GraphicsContext::createDevice() {
-  std::vector<const char*> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-  auto device_extensions = gpu.enumerateDeviceExtensionProperties();
-  if (!validateExtensions(extensions, device_extensions)) {
-    throw std::runtime_error("Required device extensions are missing.");
-  }
-
-  float queue_priority = 1.0f;
-  vk::DeviceQueueCreateInfo queue_info{
-      .queueFamilyIndex = graphics_queue_index,
-      .queueCount = 1,
-      .pQueuePriorities = &queue_priority,
-  };
-  vk::DeviceCreateInfo device_info{
-      .queueCreateInfoCount = 1,
-      .pQueueCreateInfos = &queue_info,
-      .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
-      .ppEnabledExtensionNames = extensions.data(),
-  };
-  device = gpu.createDevice(device_info);
-
-  // initialize function pointers for device
-  VULKAN_HPP_DEFAULT_DISPATCHER.init(device);
-
-  queue = device.getQueue(graphics_queue_index, 0);
-
-  vk::CommandPoolCreateInfo pool_info{
-      .flags = vk::CommandPoolCreateFlagBits::eTransient,
-      .queueFamilyIndex = graphics_queue_index,
-  };
-  command_pool = device.createCommandPool(pool_info);
-}
-
 void GraphicsContext::createRenderPass() {
   vk::AttachmentDescription color_attachment{
       .format = swapchain.getFormat(),
@@ -366,10 +164,12 @@ void GraphicsContext::createRenderPass() {
       .pDependencies = &dependency,
   };
 
-  render_pass = device.createRenderPass(render_pass_info);
+  render_pass = device.getDevice().createRenderPass(render_pass_info);
 }
 
 void GraphicsContext::createGraphicsPipeline() {
+  auto device = this->device.getDevice();
+
   std::vector<vk::DynamicState> dynamic_states{
       vk::DynamicState::eViewport,
       vk::DynamicState::eScissor,
@@ -476,11 +276,13 @@ void GraphicsContext::createGraphicsPipeline() {
 }
 
 void GraphicsContext::createFrameData() {
+  auto device = this->device.getDevice();
+
   max_frames_in_flight = 2;
   frame_data.resize(max_frames_in_flight);
 
   vk::CommandPoolCreateInfo pool_info{
-      .queueFamilyIndex = graphics_queue_index,
+      .queueFamilyIndex = this->device.getGraphicsQueueIndex(),
   };
 
   for (auto& frame : frame_data) {

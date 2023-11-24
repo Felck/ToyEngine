@@ -2,14 +2,21 @@
 
 #include <GLFW/glfw3.h>
 
-#include "ToyEngine/Renderer/GraphicsContext.hpp"
+#include <vulkan/vulkan.hpp>
+
+#include "ToyEngine/Renderer/Device.hpp"
+#include "tepch.hpp"
 
 namespace TE {
 
-SwapChain::SwapChain(GraphicsContext& ctx) : ctx(ctx) {}
+SwapChain::SwapChain(GLFWwindow* window, Device& device) : window{window}, device{device} {
+  init();
+}
+
+SwapChain::~SwapChain() { destroy(); }
 
 void SwapChain::init() {
-  auto capabilities = ctx.gpu.getSurfaceCapabilitiesKHR(ctx.surface);
+  auto capabilities = device.getGPU().getSurfaceCapabilitiesKHR(device.getSurface());
 
   // format
   auto format = selectSurfaceFormat(
@@ -21,7 +28,7 @@ void SwapChain::init() {
     extent = capabilities.currentExtent;
   } else {
     int width, height;
-    glfwGetFramebufferSize(ctx.window, &width, &height);
+    glfwGetFramebufferSize(window, &width, &height);
 
     extent.width = std::clamp(static_cast<uint32_t>(width), capabilities.minImageExtent.width,
                               capabilities.maxImageExtent.width);
@@ -36,7 +43,7 @@ void SwapChain::init() {
   }
 
   vk::SwapchainCreateInfoKHR swapchain_create_info{
-      .surface = ctx.surface,
+      .surface = device.getSurface(),
       .minImageCount = image_count,
       .imageFormat = format.format,
       .imageColorSpace = format.colorSpace,
@@ -49,11 +56,11 @@ void SwapChain::init() {
       .presentMode = vk::PresentModeKHR::eFifo,
       .clipped = true,
   };
-  this->swapchain = ctx.device.createSwapchainKHR(swapchain_create_info);
+  this->swapchain = device.getDevice().createSwapchainKHR(swapchain_create_info);
   this->format = format.format;
   this->extent = extent;
 
-  std::vector<vk::Image> images = ctx.device.getSwapchainImagesKHR(this->swapchain);
+  std::vector<vk::Image> images = device.getDevice().getSwapchainImagesKHR(this->swapchain);
   for (const auto& image : images) {
     vk::ImageViewCreateInfo image_view_create_info{
         .image = image,
@@ -68,12 +75,12 @@ void SwapChain::init() {
             },
         .subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1},
     };
-    this->image_views.push_back(ctx.device.createImageView(image_view_create_info));
+    this->image_views.push_back(device.getDevice().createImageView(image_view_create_info));
   }
 }
 
 void SwapChain::resize() {
-  ctx.device.waitIdle();
+  device.getDevice().waitIdle();
 
   destroy();
   init();
@@ -84,12 +91,12 @@ void SwapChain::destroy() {
   destroyFramebuffers();
 
   for (auto image_view : this->image_views) {
-    ctx.device.destroyImageView(image_view);
+    device.getDevice().destroyImageView(image_view);
   }
   image_views.clear();
 
   if (this->swapchain) {
-    ctx.device.destroySwapchainKHR(this->swapchain);
+    device.getDevice().destroySwapchainKHR(this->swapchain);
   }
 }
 
@@ -109,19 +116,19 @@ void SwapChain::createFramebuffers(vk::RenderPass render_pass) {
         .layers = 1,
     };
 
-    this->framebuffers[i] = ctx.device.createFramebuffer(framebuffer_info);
+    this->framebuffers[i] = device.getDevice().createFramebuffer(framebuffer_info);
   }
 }
 
 void SwapChain::destroyFramebuffers() {
   for (auto framebuffer : this->framebuffers) {
-    ctx.device.destroyFramebuffer(framebuffer);
+    device.getDevice().destroyFramebuffer(framebuffer);
   }
   framebuffers.clear();
 }
 
 vk::SurfaceFormatKHR SwapChain::selectSurfaceFormat(const std::vector<vk::Format>& preferred) {
-  auto available = ctx.gpu.getSurfaceFormatsKHR(ctx.surface);
+  auto available = device.getGPU().getSurfaceFormatsKHR(device.getSurface());
 
   auto it =
       std::find_if(available.begin(), available.end(), [&preferred](const auto& surface_format) {
