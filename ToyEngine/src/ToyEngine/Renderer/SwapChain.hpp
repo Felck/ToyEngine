@@ -10,17 +10,19 @@
 namespace TE {
 class SwapChain {
  public:
-  SwapChain(GLFWwindow* window, Device& device);
+  SwapChain(GLFWwindow* window, const Device& device);
   ~SwapChain();
 
   void resize();
   void createFramebuffers(vk::RenderPass render_pass);
   void destroyFramebuffers();
 
-  inline vk::SwapchainKHR& get() { return this->swapchain; }
-  inline vk::Format getFormat() { return this->format; }
-  inline vk::Extent2D getExtent() { return this->extent; }
-  inline vk::Framebuffer& getFramebuffer(uint32_t index) { return this->framebuffers[index]; }
+  inline const vk::SwapchainKHR& get() const { return this->swapchain; }
+  inline vk::Format getFormat() const { return this->format; }
+  inline vk::Extent2D getExtent() const { return this->extent; }
+  inline const vk::Framebuffer& getFramebuffer(uint32_t index) const {
+    return this->framebuffers[index];
+  }
 
  private:
   void init();
@@ -28,7 +30,7 @@ class SwapChain {
   vk::SurfaceFormatKHR selectSurfaceFormat(const std::vector<vk::Format>& preferred);
 
   GLFWwindow* window;
-  Device& device;
+  const Device& device;
   vk::RenderPass render_pass;
   vk::SwapchainKHR swapchain;
   vk::Format format;

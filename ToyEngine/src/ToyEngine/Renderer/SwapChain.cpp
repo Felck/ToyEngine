@@ -9,7 +9,7 @@
 
 namespace TE {
 
-SwapChain::SwapChain(GLFWwindow* window, Device& device) : window{window}, device{device} {
+SwapChain::SwapChain(GLFWwindow* window, const Device& device) : window{window}, device{device} {
   init();
 }
 
