@@ -37,30 +37,15 @@ void Buffer::write(const void* data, VkDeviceSize size, VkDeviceSize offset) con
 }
 
 void Buffer::copyTo(Buffer& dst) {
-  vk::CommandBufferAllocateInfo alloc_info{
-      .commandPool = ctx.getCommandPool(),
-      .level = vk::CommandBufferLevel::ePrimary,
-      .commandBufferCount = 1,
-  };
-  vk::CommandBuffer cmd = ctx.getDevice().allocateCommandBuffers(alloc_info)[0];
-  vk::CommandBufferBeginInfo begin_info{.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
-  vk::BufferCopy copy_region{
-      .srcOffset = 0,
-      .dstOffset = 0,
-      .size = size,
-  };
+  ctx.executeTransient([this, &dst](const vk::CommandBuffer& cmd) {
+    vk::BufferCopy copy_region{
+        .srcOffset = 0,
+        .dstOffset = 0,
+        .size = size,
+    };
 
-  cmd.begin(begin_info);
-  cmd.copyBuffer(buffer, dst.getBuffer(), 1, &copy_region);
-  cmd.end();
-  vk::SubmitInfo submit_info{
-      .commandBufferCount = 1,
-      .pCommandBuffers = &cmd,
-  };
-
-  ctx.getQueue().submit(submit_info);
-  ctx.getQueue().waitIdle();
-  ctx.getDevice().freeCommandBuffers(ctx.getCommandPool(), cmd);
+    cmd.copyBuffer(buffer, dst.getBuffer(), 1, &copy_region);
+  });
 }
 
 uint32_t Buffer::findMemoryType(vk::PhysicalDevice gpu, uint32_t type_filter,

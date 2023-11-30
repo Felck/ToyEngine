@@ -16,17 +16,31 @@ class GraphicsContext {
   GraphicsContext(GLFWwindow* window);
   ~GraphicsContext();
 
-  inline vk::Device getDevice() const { return device.getDevice(); };
-  inline vk::PhysicalDevice getGPU() const { return device.getGPU(); };
-  inline vk::CommandPool getCommandPool() const { return command_pool; };
-  inline vk::Queue getQueue() const { return device.getQueue(); };
+  inline vk::Instance getInstance() const { return device.getInstance(); }
+  inline vk::Device getDevice() const { return device.getDevice(); }
+  inline vk::PhysicalDevice getGPU() const { return device.getGPU(); }
+  inline vk::CommandPool getCommandPool() const { return transient_command_pool; }
+  inline vk::Queue getQueue() const { return device.getQueue(); }
+  inline uint32_t getGraphicsQueueIndex() const { return device.getGraphicsQueueIndex(); }
+  inline const SwapChain& getSwapChain() const { return swapchain; }
 
   void drawFrame();
+
+  template <typename F>
+  void executeTransient(F const& commands) const {
+    vk::CommandBuffer command_buffer = beginTransientExecution();
+    commands(command_buffer);
+    endTransientExecution(command_buffer);
+  }
 
  private:
   void createRenderPass();
   void createGraphicsPipeline();
   void createFrameData();
+
+  vk::CommandBuffer beginTransientExecution() const;
+  void endTransientExecution(vk::CommandBuffer cmd) const;
+
   void recordCommandBuffer(vk::CommandBuffer buffer, uint32_t image_index);
 
   struct FrameData {
@@ -39,7 +53,7 @@ class GraphicsContext {
 
   Device device;
   SwapChain swapchain;
-  vk::CommandPool command_pool;  // transient command pool
+  vk::CommandPool transient_command_pool;
   vk::RenderPass render_pass;
   vk::PipelineLayout pipeline_layout;
   vk::Pipeline graphics_pipeline;

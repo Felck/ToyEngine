@@ -21,7 +21,7 @@ GraphicsContext::GraphicsContext(GLFWwindow* window) : device{window}, swapchain
       .flags = vk::CommandPoolCreateFlagBits::eTransient,
       .queueFamilyIndex = device.getGraphicsQueueIndex(),
   };
-  command_pool = device.getDevice().createCommandPool(pool_info);
+  transient_command_pool = device.getDevice().createCommandPool(pool_info);
 
   createRenderPass();
   createGraphicsPipeline();
@@ -57,8 +57,8 @@ GraphicsContext::~GraphicsContext() {
     device.destroyRenderPass(render_pass);
   }
 
-  if (command_pool) {
-    device.destroyCommandPool(command_pool);
+  if (transient_command_pool) {
+    device.destroyCommandPool(transient_command_pool);
   }
 }
 
@@ -298,6 +298,34 @@ void GraphicsContext::createFrameData() {
     };
     frame.command_buffer = device.allocateCommandBuffers(alloc_info)[0];
   }
+}
+
+vk::CommandBuffer GraphicsContext::beginTransientExecution() const {
+  vk::CommandBufferAllocateInfo allocation_info{
+      .commandPool = transient_command_pool,
+      .level = vk::CommandBufferLevel::ePrimary,
+      .commandBufferCount = 1,
+  };
+
+  vk::CommandBuffer cmd = device.getDevice().allocateCommandBuffers(allocation_info)[0];
+
+  vk::CommandBufferBeginInfo begin_info{.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+  cmd.begin(begin_info);
+
+  return cmd;
+}
+
+void GraphicsContext::endTransientExecution(vk::CommandBuffer cmd) const {
+  cmd.end();
+
+  vk::SubmitInfo submit_info{
+      .commandBufferCount = 1,
+      .pCommandBuffers = &cmd,
+  };
+
+  device.getQueue().submit(submit_info);
+  device.getQueue().waitIdle();
+  device.getDevice().freeCommandBuffers(transient_command_pool, cmd);
 }
 
 void GraphicsContext::recordCommandBuffer(vk::CommandBuffer cmd, uint32_t image_index) {
