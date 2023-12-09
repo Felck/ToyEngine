@@ -16,12 +16,13 @@ Application::~Application() {}
 
 void Application::run() {
   while (running) {
+    window->onUpdate();
+
+    window->getContext().beginFrame();
     for (auto layer : layerStack) {
       layer->onUpdate();
     }
-    window->onUpdate();
-
-    window->getContext().drawFrame();
+    window->getContext().endFrame();
   }
 }
 

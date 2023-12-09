@@ -24,7 +24,13 @@ class GraphicsContext {
   inline uint32_t getGraphicsQueueIndex() const { return device.getGraphicsQueueIndex(); }
   inline const SwapChain& getSwapChain() const { return swapchain; }
 
-  void drawFrame();
+  void beginFrame();
+  void endFrame();
+
+  template <typename F>
+  void recordRenderPass(F const& commands) const {
+    commands(frame_data[current_frame].command_buffer);
+  }
 
   template <typename F>
   void executeTransient(F const& commands) const {
@@ -32,6 +38,8 @@ class GraphicsContext {
     commands(command_buffer);
     endTransientExecution(command_buffer);
   }
+
+  uint32_t image;
 
  private:
   void createRenderPass();

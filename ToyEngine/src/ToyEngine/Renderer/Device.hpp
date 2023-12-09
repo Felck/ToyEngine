@@ -10,6 +10,7 @@ class Device {
   Device(GLFWwindow* window);
   ~Device();
 
+  inline vk::Instance getInstance() const { return instance; }
   inline vk::SurfaceKHR getSurface() const { return surface; }
   inline vk::PhysicalDevice getGPU() const { return physical_device; }
   inline vk::Device getDevice() const { return logical_device; }

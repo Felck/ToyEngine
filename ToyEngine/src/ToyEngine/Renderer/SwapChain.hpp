@@ -20,6 +20,7 @@ class SwapChain {
   inline const vk::SwapchainKHR& get() const { return this->swapchain; }
   inline vk::Format getFormat() const { return this->format; }
   inline vk::Extent2D getExtent() const { return this->extent; }
+  inline uint32_t getImageCount() const { return image_views.size(); }
   inline const vk::Framebuffer& getFramebuffer(uint32_t index) const {
     return this->framebuffers[index];
   }

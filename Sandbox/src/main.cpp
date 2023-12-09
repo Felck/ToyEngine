@@ -7,8 +7,7 @@
 
 class Sandbox : public TE::Application {
  public:
-  Sandbox() { /*pushLayer(new TE::ImGuiLayer());*/
-  }
+  Sandbox() { pushLayer(new TE::ImGuiLayer()); }
 
   ~Sandbox() {}
 };

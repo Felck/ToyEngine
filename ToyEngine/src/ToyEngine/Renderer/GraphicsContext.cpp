@@ -62,20 +62,19 @@ GraphicsContext::~GraphicsContext() {
   }
 }
 
-void GraphicsContext::drawFrame() {
+void GraphicsContext::beginFrame() {
   auto device = this->device.getDevice();
   auto queue = this->device.getQueue();
   auto& frame = frame_data[current_frame];
-  current_frame = (current_frame + 1) % max_frames_in_flight;
 
   (void)device.waitForFences(frame.submit_fence, true, UINT64_MAX);
 
   vk::Result res;
-  uint32_t image;
   std::tie(res, image) =
       device.acquireNextImageKHR(swapchain.get(), UINT64_MAX, frame.acquire_semaphore);
   if (res == vk::Result::eErrorOutOfDateKHR) {
     swapchain.resize();
+    beginFrame();
     return;
   } else if (res == vk::Result::eSuboptimalKHR) {
     vk::PipelineStageFlags psf[] = {vk::PipelineStageFlagBits::eBottomOfPipe};
@@ -88,6 +87,7 @@ void GraphicsContext::drawFrame() {
     queue.submit(submit_info);
 
     swapchain.resize();
+    beginFrame();
     return;
   } else if (res != vk::Result::eSuccess) {
     queue.waitIdle();
@@ -95,9 +95,18 @@ void GraphicsContext::drawFrame() {
   }
 
   device.resetFences(frame.submit_fence);
-
   device.resetCommandPool(frame.command_pool);
+
+  vk::CommandBufferBeginInfo begin_info{.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+  frame.command_buffer.begin(begin_info);
   recordCommandBuffer(frame.command_buffer, image);
+}
+
+void GraphicsContext::endFrame() {
+  auto queue = this->device.getQueue();
+  auto& frame = frame_data[current_frame];
+
+  frame.command_buffer.end();
 
   vk::Semaphore wait_semaphores[] = {frame.acquire_semaphore};
   vk::PipelineStageFlags wait_stages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
@@ -120,7 +129,9 @@ void GraphicsContext::drawFrame() {
       .pSwapchains = &swapchain.get(),
       .pImageIndices = &image,
   };
-  res = queue.presentKHR(present_info);
+  (void)queue.presentKHR(present_info);
+
+  current_frame = (current_frame + 1) % max_frames_in_flight;
 }
 
 void GraphicsContext::createRenderPass() {
@@ -343,8 +354,6 @@ void GraphicsContext::recordCommandBuffer(vk::CommandBuffer cmd, uint32_t image_
 
   vk::Rect2D scissor{{0, 0}, extent};
 
-  vk::CommandBufferBeginInfo begin_info{.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
-
   vk::RenderPassBeginInfo render_pass_info{
       .renderPass = render_pass,
       .framebuffer = swapchain.getFramebuffer(image_index),
@@ -353,7 +362,6 @@ void GraphicsContext::recordCommandBuffer(vk::CommandBuffer cmd, uint32_t image_
       .pClearValues = &clear_value,
   };
 
-  cmd.begin(begin_info);
   cmd.beginRenderPass(render_pass_info, vk::SubpassContents::eInline);
   cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, graphics_pipeline);
   cmd.setViewport(0, viewport);
@@ -361,6 +369,5 @@ void GraphicsContext::recordCommandBuffer(vk::CommandBuffer cmd, uint32_t image_
   vertex_array->bind(cmd);
   vertex_array->draw(cmd);
   cmd.endRenderPass();
-  cmd.end();
 }
 }  // namespace TE

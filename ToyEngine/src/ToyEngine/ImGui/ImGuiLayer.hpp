@@ -1,7 +1,10 @@
 #pragma once
 
+#include <vulkan/vulkan.hpp>
+
 #include "ToyEngine/Core/Layer.hpp"
 #include "ToyEngine/Events/Event.hpp"
+#include "ToyEngine/Renderer/GraphicsContext.hpp"
 
 namespace TE {
 
@@ -15,11 +18,12 @@ class ImGuiLayer : public Layer {
   virtual void onUpdate() override;
   virtual void onEvent(Event& e) override;
 
-  void begin();
-  void end();
-
  private:
-  bool m_BlockEvents = true;
+  void createRenderPass(const GraphicsContext& ctx);
+
+  bool block_events = true;
+  vk::DescriptorPool descriptor_pool;
+  vk::RenderPass render_pass;
 };
 
 }  // namespace TE
