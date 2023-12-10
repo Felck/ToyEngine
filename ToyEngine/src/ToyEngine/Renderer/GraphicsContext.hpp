@@ -39,8 +39,6 @@ class GraphicsContext {
     endTransientExecution(command_buffer);
   }
 
-  uint32_t image;
-
  private:
   void createRenderPass();
   void createGraphicsPipeline();
@@ -49,7 +47,7 @@ class GraphicsContext {
   vk::CommandBuffer beginTransientExecution() const;
   void endTransientExecution(vk::CommandBuffer cmd) const;
 
-  void recordCommandBuffer(vk::CommandBuffer buffer, uint32_t image_index);
+  void recordCommandBuffer(vk::CommandBuffer buffer);
 
   struct FrameData {
     vk::CommandPool command_pool;

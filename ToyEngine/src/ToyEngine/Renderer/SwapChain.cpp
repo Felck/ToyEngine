@@ -127,6 +127,33 @@ void SwapChain::destroyFramebuffers() {
   framebuffers.clear();
 }
 
+void SwapChain::acquireNextImage(vk::Semaphore acquire_semaphore) {
+  vk::Result res;
+  std::tie(res, current_image) =
+      device.getDevice().acquireNextImageKHR(swapchain, UINT64_MAX, acquire_semaphore);
+  if (res == vk::Result::eErrorOutOfDateKHR) {
+    resize();
+    acquireNextImage(acquire_semaphore);
+    return;
+  } else if (res == vk::Result::eSuboptimalKHR) {
+    vk::PipelineStageFlags psf[] = {vk::PipelineStageFlagBits::eBottomOfPipe};
+    vk::SubmitInfo submit_info{
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &acquire_semaphore,
+        .pWaitDstStageMask = psf,
+    };
+    // clear signaled semaphore
+    device.getQueue().submit(submit_info);
+
+    resize();
+    acquireNextImage(acquire_semaphore);
+    return;
+  } else if (res != vk::Result::eSuccess) {
+    device.getQueue().waitIdle();
+    throw std::runtime_error("Failed to acquire swap chain image!");
+  }
+}
+
 vk::SurfaceFormatKHR SwapChain::selectSurfaceFormat(const std::vector<vk::Format>& preferred) {
   auto available = device.getGPU().getSurfaceFormatsKHR(device.getSurface());
 

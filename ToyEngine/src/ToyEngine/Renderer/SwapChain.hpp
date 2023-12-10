@@ -16,14 +16,14 @@ class SwapChain {
   void resize();
   void createFramebuffers(vk::RenderPass render_pass);
   void destroyFramebuffers();
+  void acquireNextImage(vk::Semaphore acquire_semaphore);
 
-  inline const vk::SwapchainKHR& get() const { return this->swapchain; }
-  inline vk::Format getFormat() const { return this->format; }
-  inline vk::Extent2D getExtent() const { return this->extent; }
+  inline vk::SwapchainKHR get() const { return swapchain; }
+  inline vk::Format getFormat() const { return format; }
+  inline vk::Extent2D getExtent() const { return extent; }
   inline uint32_t getImageCount() const { return image_views.size(); }
-  inline const vk::Framebuffer& getFramebuffer(uint32_t index) const {
-    return this->framebuffers[index];
-  }
+  inline uint32_t getImage() const { return current_image; }
+  inline vk::Framebuffer getFramebuffer() const { return framebuffers[current_image]; }
 
  private:
   void init();
@@ -38,6 +38,7 @@ class SwapChain {
   vk::Extent2D extent;
   std::vector<vk::ImageView> image_views;
   std::vector<vk::Framebuffer> framebuffers;
+  uint32_t current_image;
 };
 
 }  // namespace TE

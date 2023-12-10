@@ -103,7 +103,7 @@ void ImGuiLayer::onUpdate() {
 
     vk::RenderPassBeginInfo render_pass_info{
         .renderPass = render_pass,
-        .framebuffer = ctx.getSwapChain().getFramebuffer(ctx.image),
+        .framebuffer = ctx.getSwapChain().getFramebuffer(),
         .renderArea = {{0, 0}, extent},
         .clearValueCount = 1,
         .pClearValues = &clear_value,

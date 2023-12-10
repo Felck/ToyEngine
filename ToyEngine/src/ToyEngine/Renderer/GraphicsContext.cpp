@@ -64,42 +64,16 @@ GraphicsContext::~GraphicsContext() {
 
 void GraphicsContext::beginFrame() {
   auto device = this->device.getDevice();
-  auto queue = this->device.getQueue();
   auto& frame = frame_data[current_frame];
 
   (void)device.waitForFences(frame.submit_fence, true, UINT64_MAX);
-
-  vk::Result res;
-  std::tie(res, image) =
-      device.acquireNextImageKHR(swapchain.get(), UINT64_MAX, frame.acquire_semaphore);
-  if (res == vk::Result::eErrorOutOfDateKHR) {
-    swapchain.resize();
-    beginFrame();
-    return;
-  } else if (res == vk::Result::eSuboptimalKHR) {
-    vk::PipelineStageFlags psf[] = {vk::PipelineStageFlagBits::eBottomOfPipe};
-    vk::SubmitInfo submit_info{
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &frame.acquire_semaphore,
-        .pWaitDstStageMask = psf,
-    };
-    // clear signaled semaphore
-    queue.submit(submit_info);
-
-    swapchain.resize();
-    beginFrame();
-    return;
-  } else if (res != vk::Result::eSuccess) {
-    queue.waitIdle();
-    throw std::runtime_error("Failed to acquire swap chain image!");
-  }
-
+  swapchain.acquireNextImage(frame.acquire_semaphore);
   device.resetFences(frame.submit_fence);
   device.resetCommandPool(frame.command_pool);
 
   vk::CommandBufferBeginInfo begin_info{.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
   frame.command_buffer.begin(begin_info);
-  recordCommandBuffer(frame.command_buffer, image);
+  recordCommandBuffer(frame.command_buffer);
 }
 
 void GraphicsContext::endFrame() {
@@ -122,11 +96,14 @@ void GraphicsContext::endFrame() {
   };
   queue.submit(submit_info, frame.submit_fence);
 
+  vk::SwapchainKHR swc = swapchain.get();
+  uint32_t image = swapchain.getImage();
+
   vk::PresentInfoKHR present_info{
       .waitSemaphoreCount = 1,
       .pWaitSemaphores = signal_semaphores,
       .swapchainCount = 1,
-      .pSwapchains = &swapchain.get(),
+      .pSwapchains = &swc,
       .pImageIndices = &image,
   };
   (void)queue.presentKHR(present_info);
@@ -339,7 +316,7 @@ void GraphicsContext::endTransientExecution(vk::CommandBuffer cmd) const {
   device.getDevice().freeCommandBuffers(transient_command_pool, cmd);
 }
 
-void GraphicsContext::recordCommandBuffer(vk::CommandBuffer cmd, uint32_t image_index) {
+void GraphicsContext::recordCommandBuffer(vk::CommandBuffer cmd) {
   vk::ClearValue clear_value{{{{0.01f, 0.01f, 0.033f, 1.0f}}}};
   auto extent = swapchain.getExtent();
 
@@ -356,7 +333,7 @@ void GraphicsContext::recordCommandBuffer(vk::CommandBuffer cmd, uint32_t image_
 
   vk::RenderPassBeginInfo render_pass_info{
       .renderPass = render_pass,
-      .framebuffer = swapchain.getFramebuffer(image_index),
+      .framebuffer = swapchain.getFramebuffer(),
       .renderArea = {{0, 0}, extent},
       .clearValueCount = 1,
       .pClearValues = &clear_value,
