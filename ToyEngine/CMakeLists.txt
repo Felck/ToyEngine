@@ -40,3 +40,6 @@ target_include_directories(imgui PUBLIC ${IMGUI_DIR})
 target_link_libraries(imgui glfw)
 target_link_libraries(toyengine imgui)
 
+# glm
+add_subdirectory(vendor/glm)
+target_link_libraries(toyengine glm)
