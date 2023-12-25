@@ -37,7 +37,7 @@ set(IMGUI_DIR "vendor/ImGui")
 file(GLOB IMGUI_SOURCE  ${IMGUI_DIR}/*.cpp)
 add_library(imgui STATIC ${IMGUI_SOURCE} ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp)
 target_include_directories(imgui PUBLIC ${IMGUI_DIR})
-target_link_libraries(imgui glfw)
+target_link_libraries(imgui glfw Vulkan::Vulkan)
 target_link_libraries(toyengine imgui)
 
 # glm
