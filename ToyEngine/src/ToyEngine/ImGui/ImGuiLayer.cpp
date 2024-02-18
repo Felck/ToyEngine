@@ -9,6 +9,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "ToyEngine/Core/Application.hpp"
+#include "ToyEngine/Core/Layer.hpp"
 #include "ToyEngine/Events/Event.hpp"
 #include "ToyEngine/Renderer/GraphicsContext.hpp"
 #include "tepch.hpp"
@@ -28,7 +29,7 @@ void ImGuiLayer::onAttach() {
 
   Application& app = Application::get();
   GLFWwindow* window = static_cast<GLFWwindow*>(app.getWindow().getNativeWindow());
-  GraphicsContext& ctx = app.getWindow().getContext();
+  GraphicsContext& ctx = GraphicsContext::get();
 
   vk::DescriptorPoolSize pool_sizes[] = {
       {vk::DescriptorType::eSampler, 1000},
@@ -76,7 +77,7 @@ void ImGuiLayer::onAttach() {
 }
 
 void ImGuiLayer::onDetach() {
-  const auto& device = Application::get().getWindow().getContext().getDevice();
+  const auto& device = GraphicsContext::get().getDevice();
   device.waitIdle();
 
   ImGui_ImplVulkan_Shutdown();
@@ -96,15 +97,14 @@ void ImGuiLayer::onUpdate() {
   ImGui::Render();
   ImDrawData* draw_data = ImGui::GetDrawData();
 
-  Application::get().getWindow().getContext().recordRenderPass([=](auto cmd) {
-    auto& ctx = Application::get().getWindow().getContext();
+  GraphicsContext::get().record([=](auto cmd) {
+    auto& swapchain = GraphicsContext::get().getSwapChain();
     vk::ClearValue clear_value{{{{0.01f, 0.01f, 0.033f, 1.0f}}}};
-    auto extent = ctx.getSwapChain().getExtent();
 
     vk::RenderPassBeginInfo render_pass_info{
         .renderPass = render_pass,
-        .framebuffer = ctx.getSwapChain().getFramebuffer(),
-        .renderArea = {{0, 0}, extent},
+        .framebuffer = swapchain.getFramebuffer(),
+        .renderArea = {{0, 0}, swapchain.getExtent()},
         .clearValueCount = 1,
         .pClearValues = &clear_value,
     };

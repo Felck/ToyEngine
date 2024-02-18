@@ -15,7 +15,12 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 namespace TE {
 
+GraphicsContext* GraphicsContext::instance = nullptr;
+
 GraphicsContext::GraphicsContext(GLFWwindow* window) : device{window}, swapchain{window, device} {
+  assert(instance == nullptr);
+  instance = this;
+
   // transient command pool
   vk::CommandPoolCreateInfo pool_info{
       .flags = vk::CommandPoolCreateFlagBits::eTransient,
@@ -27,16 +32,10 @@ GraphicsContext::GraphicsContext(GLFWwindow* window) : device{window}, swapchain
   createGraphicsPipeline();
   swapchain.createFramebuffers(render_pass);
   createFrameData();
-
-  vertex_array = std::make_unique<VertexArray>(
-      *this, std::vector<float>{0.0, -0.5, 0.5, 0.5, -0.5, 0.5}, std::vector<uint16_t>{0, 1, 2});
 }
 
 GraphicsContext::~GraphicsContext() {
   auto device = this->device.getDevice();
-  device.waitIdle();
-
-  vertex_array = nullptr;
 
   for (auto& frame : frame_data) {
     device.destroySemaphore(frame.acquire_semaphore);
@@ -60,6 +59,8 @@ GraphicsContext::~GraphicsContext() {
   if (transient_command_pool) {
     device.destroyCommandPool(transient_command_pool);
   }
+
+  instance = nullptr;
 }
 
 void GraphicsContext::beginFrame() {
@@ -73,7 +74,6 @@ void GraphicsContext::beginFrame() {
 
   vk::CommandBufferBeginInfo begin_info{.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
   frame.command_buffer.begin(begin_info);
-  recordCommandBuffer(frame.command_buffer);
 }
 
 void GraphicsContext::endFrame() {
@@ -109,6 +109,41 @@ void GraphicsContext::endFrame() {
   (void)queue.presentKHR(present_info);
 
   current_frame = (current_frame + 1) % max_frames_in_flight;
+}
+
+void GraphicsContext::beginPass() {
+  vk::ClearValue clear_value{{{{0.01f, 0.01f, 0.033f, 1.0f}}}};
+  auto extent = swapchain.getExtent();
+
+  vk::Viewport viewport{
+      .x = 0.0f,
+      .y = 0.0f,
+      .width = static_cast<float>(extent.width),
+      .height = static_cast<float>(extent.height),
+      .minDepth = 0.0f,
+      .maxDepth = 1.0f,
+  };
+
+  vk::Rect2D scissor{{0, 0}, extent};
+
+  vk::RenderPassBeginInfo render_pass_info{
+      .renderPass = render_pass,
+      .framebuffer = swapchain.getFramebuffer(),
+      .renderArea = {{0, 0}, extent},
+      .clearValueCount = 1,
+      .pClearValues = &clear_value,
+  };
+
+  auto& frame = frame_data[current_frame];
+  frame.command_buffer.beginRenderPass(render_pass_info, vk::SubpassContents::eInline);
+  frame.command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphics_pipeline);
+  frame.command_buffer.setViewport(0, viewport);
+  frame.command_buffer.setScissor(0, scissor);
+}
+
+void GraphicsContext::endPass() {
+  auto& frame = frame_data[current_frame];
+  frame.command_buffer.endRenderPass();
 }
 
 void GraphicsContext::createRenderPass() {
@@ -314,37 +349,5 @@ void GraphicsContext::endTransientExecution(vk::CommandBuffer cmd) const {
   device.getQueue().submit(submit_info);
   device.getQueue().waitIdle();
   device.getDevice().freeCommandBuffers(transient_command_pool, cmd);
-}
-
-void GraphicsContext::recordCommandBuffer(vk::CommandBuffer cmd) {
-  vk::ClearValue clear_value{{{{0.01f, 0.01f, 0.033f, 1.0f}}}};
-  auto extent = swapchain.getExtent();
-
-  vk::Viewport viewport{
-      .x = 0.0f,
-      .y = 0.0f,
-      .width = static_cast<float>(extent.width),
-      .height = static_cast<float>(extent.height),
-      .minDepth = 0.0f,
-      .maxDepth = 1.0f,
-  };
-
-  vk::Rect2D scissor{{0, 0}, extent};
-
-  vk::RenderPassBeginInfo render_pass_info{
-      .renderPass = render_pass,
-      .framebuffer = swapchain.getFramebuffer(),
-      .renderArea = {{0, 0}, extent},
-      .clearValueCount = 1,
-      .pClearValues = &clear_value,
-  };
-
-  cmd.beginRenderPass(render_pass_info, vk::SubpassContents::eInline);
-  cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, graphics_pipeline);
-  cmd.setViewport(0, viewport);
-  cmd.setScissor(0, scissor);
-  vertex_array->bind(cmd);
-  vertex_array->draw(cmd);
-  cmd.endRenderPass();
 }
 }  // namespace TE

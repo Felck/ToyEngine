@@ -6,18 +6,16 @@
 #include "tepch.hpp"
 
 namespace TE {
-class GraphicsContext;  // forward declaration
 
 class VertexArray {
  public:
   typedef float VertexType;
   typedef uint16_t IndexType;
 
-  VertexArray(GraphicsContext& ctx, std::vector<VertexType> vertices,
-              std::vector<IndexType> indices);
+  VertexArray(const std::span<const VertexType> vertices, const std::span<const IndexType> indices);
 
-  void bind(const vk::CommandBuffer& cmd) const;
-  void draw(const vk::CommandBuffer& cmd) const;
+  void bind(const vk::CommandBuffer cmd) const;
+  void draw(const vk::CommandBuffer cmd) const;
 
  private:
   Buffer vertex_buffer;

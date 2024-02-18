@@ -5,16 +5,14 @@
 #include "Buffer.hpp"
 
 namespace TE {
-VertexArray::VertexArray(GraphicsContext& ctx, std::vector<VertexType> vertices,
-                         std::vector<IndexType> indices)
+VertexArray::VertexArray(const std::span<const VertexType> vertices,
+                         const std::span<const IndexType> indices)
     : vertex_buffer{
-          ctx,
           sizeof(VertexType) * vertices.size(),
           vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
           vk::MemoryPropertyFlagBits::eDeviceLocal,
       },
       index_buffer{
-          ctx,
           sizeof(IndexType) * indices.size(),
           vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
           vk::MemoryPropertyFlagBits::eDeviceLocal,
@@ -24,7 +22,6 @@ VertexArray::VertexArray(GraphicsContext& ctx, std::vector<VertexType> vertices,
   vk::DeviceSize indices_size{sizeof(IndexType) * indices.size()};
 
   Buffer vertex_staging_buffer{
-      ctx,
       vertices_size,
       vk::BufferUsageFlagBits::eTransferSrc,
       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
@@ -33,7 +30,6 @@ VertexArray::VertexArray(GraphicsContext& ctx, std::vector<VertexType> vertices,
   vertex_staging_buffer.copyTo(vertex_buffer);
 
   Buffer index_staging_buffer{
-      ctx,
       indices_size,
       vk::BufferUsageFlagBits::eTransferSrc,
       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
@@ -42,12 +38,12 @@ VertexArray::VertexArray(GraphicsContext& ctx, std::vector<VertexType> vertices,
   index_staging_buffer.copyTo(index_buffer);
 }
 
-void VertexArray::bind(const vk::CommandBuffer& cmd) const {
+void VertexArray::bind(const vk::CommandBuffer cmd) const {
   cmd.bindVertexBuffers(0, vertex_buffer.getBuffer(), {0});
   cmd.bindIndexBuffer(index_buffer.getBuffer(), 0, vk::IndexType::eUint16);
 }
 
-void VertexArray::draw(const vk::CommandBuffer& cmd) const {
+void VertexArray::draw(const vk::CommandBuffer cmd) const {
   cmd.drawIndexed(index_count, 1, 0, 0, 0);
 }
 }  // namespace TE

@@ -6,9 +6,9 @@
 #include "tepch.hpp"
 
 namespace TE {
-Buffer::Buffer(const GraphicsContext& ctx, vk::DeviceSize size, vk::BufferUsageFlags usage,
-               vk::MemoryPropertyFlags properties)
-    : ctx{ctx}, size{size} {
+Buffer::Buffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties)
+    : size{size} {
+  auto& ctx = GraphicsContext::get();
   vk::BufferCreateInfo buffer_info{
       .size = size,
       .usage = usage,
@@ -26,18 +26,21 @@ Buffer::Buffer(const GraphicsContext& ctx, vk::DeviceSize size, vk::BufferUsageF
 }
 
 Buffer::~Buffer() {
+  auto& ctx = GraphicsContext::get();
   ctx.getDevice().destroyBuffer(buffer);
   ctx.getDevice().freeMemory(memory);
 }
 
 void Buffer::write(const void* data, VkDeviceSize size, VkDeviceSize offset) const {
+  auto& ctx = GraphicsContext::get();
   void* mapped = ctx.getDevice().mapMemory(memory, offset, size);
   memcpy(mapped, data, (size_t)size);
   ctx.getDevice().unmapMemory(memory);
 }
 
 void Buffer::copyTo(Buffer& dst) {
-  ctx.executeTransient([this, &dst](const vk::CommandBuffer& cmd) {
+  auto& ctx = GraphicsContext::get();
+  ctx.executeTransient([this, &dst](vk::CommandBuffer cmd) {
     vk::BufferCopy copy_region{
         .srcOffset = 0,
         .dstOffset = 0,

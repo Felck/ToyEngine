@@ -1,6 +1,7 @@
 #include "Application.hpp"
 
 #include "ToyEngine/Core/Window.hpp"
+#include "ToyEngine/Renderer/GraphicsContext.hpp"
 
 namespace TE {
 
@@ -12,17 +13,17 @@ Application::Application() {
   window->setEventCallback(BIND_EVENT_FN(onEvent));
 }
 
-Application::~Application() {}
+Application::~Application() { GraphicsContext::get().getDevice().waitIdle(); }
 
 void Application::run() {
   while (running) {
     window->onUpdate();
 
-    window->getContext().beginFrame();
+    GraphicsContext::get().beginFrame();
     for (auto layer : layerStack) {
       layer->onUpdate();
     }
-    window->getContext().endFrame();
+    GraphicsContext::get().endFrame();
   }
 }
 

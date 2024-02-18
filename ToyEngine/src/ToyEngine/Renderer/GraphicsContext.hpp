@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 
 #include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_handles.hpp>
 
 #include "ToyEngine/Renderer/Device.hpp"
 #include "ToyEngine/Renderer/Shader.hpp"
@@ -16,6 +17,8 @@ class GraphicsContext {
   GraphicsContext(GLFWwindow* window);
   ~GraphicsContext();
 
+  inline static GraphicsContext& get() { return *instance; }
+
   inline vk::Instance getInstance() const { return device.getInstance(); }
   inline vk::Device getDevice() const { return device.getDevice(); }
   inline vk::PhysicalDevice getGPU() const { return device.getGPU(); }
@@ -23,17 +26,20 @@ class GraphicsContext {
   inline vk::Queue getQueue() const { return device.getQueue(); }
   inline uint32_t getGraphicsQueueIndex() const { return device.getGraphicsQueueIndex(); }
   inline const SwapChain& getSwapChain() const { return swapchain; }
+  inline vk::CommandBuffer getCommandBuffer() const {
+    return frame_data[current_frame].command_buffer;
+  }
 
   void beginFrame();
   void endFrame();
+  void beginPass();
+  void endPass();
 
-  template <typename F>
-  void recordRenderPass(F const& commands) const {
+  void record(const std::invocable<vk::CommandBuffer> auto&& commands) const {
     commands(frame_data[current_frame].command_buffer);
   }
 
-  template <typename F>
-  void executeTransient(F const& commands) const {
+  void executeTransient(const std::invocable<vk::CommandBuffer> auto&& commands) const {
     vk::CommandBuffer command_buffer = beginTransientExecution();
     commands(command_buffer);
     endTransientExecution(command_buffer);
@@ -46,8 +52,6 @@ class GraphicsContext {
 
   vk::CommandBuffer beginTransientExecution() const;
   void endTransientExecution(vk::CommandBuffer cmd) const;
-
-  void recordCommandBuffer(vk::CommandBuffer buffer);
 
   struct FrameData {
     vk::CommandPool command_pool;
@@ -68,6 +72,6 @@ class GraphicsContext {
   uint32_t max_frames_in_flight;
   uint32_t current_frame = 0;
 
-  std::unique_ptr<VertexArray> vertex_array;
+  static GraphicsContext* instance;
 };
 }  // namespace TE

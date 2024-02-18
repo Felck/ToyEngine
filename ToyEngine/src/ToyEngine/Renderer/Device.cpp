@@ -10,21 +10,13 @@ const std::vector<const char*> VALIDATION_LAYERS = {"VK_LAYER_KHRONOS_validation
 
 bool validateLayers() {
   auto available = vk::enumerateInstanceLayerProperties();
-
-  return !std::any_of(
-      VALIDATION_LAYERS.begin(), VALIDATION_LAYERS.end(), [&available](const auto layer) {
-        return !std::any_of(available.begin(), available.end(),
-                            [&layer](const auto& lp) { return strcmp(lp.layerName, layer) == 0; });
-      });
-
-  auto unavailable = std::find_if(
-      VALIDATION_LAYERS.begin(), VALIDATION_LAYERS.end(), [&available](const auto layer) {
-        return std::find_if(available.begin(), available.end(), [&layer](const auto& l) {
-                 return strcmp(l.layerName, layer) == 0;
-               }) == available.end();
-      });
-
-  return (unavailable == VALIDATION_LAYERS.end());
+  return std::all_of(VALIDATION_LAYERS.begin(), VALIDATION_LAYERS.end(),
+                     [&available](const char* layer) {
+                       return std::find_if(available.begin(), available.end(),
+                                           [layer](const vk::LayerProperties& props) {
+                                             return strcmp(props.layerName, layer) == 0;
+                                           }) != available.end();
+                     });
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
