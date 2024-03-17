@@ -42,4 +42,8 @@ target_link_libraries(toyengine imgui)
 
 # glm
 add_subdirectory(vendor/glm)
+target_compile_definitions(toyengine PRIVATE
+    GLM_FORCE_DEPTH_ZERO_TO_ONE
+    GLM_FORCE_LEFT_HANDED
+)
 target_link_libraries(toyengine glm)

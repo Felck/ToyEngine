@@ -2,6 +2,7 @@
 
 #include <GLFW/glfw3.h>
 
+#include <glm/glm.hpp>
 #include <vulkan/vulkan.hpp>
 
 #include "ToyEngine/Renderer/Device.hpp"
@@ -262,7 +263,18 @@ void GraphicsContext::createGraphicsPipeline() {
       .pAttachments = &blend_attachment,
   };
 
-  vk::PipelineLayoutCreateInfo pipeline_layout_info{};
+  vk::PushConstantRange push_constants{
+      .stageFlags = vk::ShaderStageFlagBits::eVertex,
+      .offset = 0,
+      .size = sizeof(glm::mat4),
+  };
+
+  vk::PipelineLayoutCreateInfo pipeline_layout_info{
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges = &push_constants,
+
+  };
+
   pipeline_layout = device.createPipelineLayout(pipeline_layout_info);
 
   std::vector<Shader> shaders{

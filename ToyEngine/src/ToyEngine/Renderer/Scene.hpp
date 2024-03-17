@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ToyEngine/Renderer/Camera.hpp"
 #include "ToyEngine/Renderer/GraphicsContext.hpp"
 #include "ToyEngine/Renderer/VertexArray.hpp"
 #include "tepch.hpp"
@@ -14,6 +15,7 @@ class Scene {
   }
 
  private:
+  Camera camera{glm::vec3(-5.0f, -5.0f, -5.0f), glm::vec3(0.0f, 0.0f, 0.0f)};
   std::vector<VertexArray> vertex_arrays;
 };
 }  // namespace TE

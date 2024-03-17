@@ -25,6 +25,7 @@ class GraphicsContext {
   inline vk::CommandPool getCommandPool() const { return transient_command_pool; }
   inline vk::Queue getQueue() const { return device.getQueue(); }
   inline uint32_t getGraphicsQueueIndex() const { return device.getGraphicsQueueIndex(); }
+  inline vk::PipelineLayout getPipelineLayout() const { return pipeline_layout; }
   inline const SwapChain& getSwapChain() const { return swapchain; }
   inline vk::CommandBuffer getCommandBuffer() const {
     return frame_data[current_frame].command_buffer;
