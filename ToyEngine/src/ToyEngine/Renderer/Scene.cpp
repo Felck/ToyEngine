@@ -2,7 +2,7 @@
 
 namespace TE {
 
-void Scene::draw() const {
+void Scene::draw() {
   auto& ctx = TE::GraphicsContext::get();
   auto cmd = ctx.getCommandBuffer();
   ctx.beginPass();

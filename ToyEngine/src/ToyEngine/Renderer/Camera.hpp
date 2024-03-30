@@ -6,7 +6,11 @@ namespace TE {
 class Camera {
  public:
   Camera(glm::vec3 position, glm::vec3 lookAt);
-  inline const glm::mat4& getViewProjection() const { return viewProjection; }
+  inline const glm::mat4& getViewProjection() {
+    viewProjection = projection * view;
+    return viewProjection;
+  }
+  inline void move(float x, float y, float z) { view = glm::translate(view, glm::vec3(x, -y, z)); };
 
  private:
   glm::mat4 view;

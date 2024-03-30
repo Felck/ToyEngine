@@ -12,12 +12,12 @@ void Input::init(GLFWwindow* window) {
   Input::window = window;
 }
 
-bool Input::isKeyPressed(int keyCode) {
+bool Input::isKeyPressed(KeyCode keyCode) {
   auto state = glfwGetKey(Input::window, keyCode);
   return state == GLFW_PRESS || state == GLFW_REPEAT;
 }
 
-bool Input::isMouseButtonPressed(int button) {
+bool Input::isMouseButtonPressed(MouseCode button) {
   auto state = glfwGetMouseButton(Input::window, button);
   return state == GLFW_PRESS;
 }
