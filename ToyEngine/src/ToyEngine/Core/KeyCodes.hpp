@@ -1,5 +1,7 @@
 #pragma once
 
+#include "tepch.hpp"
+
 namespace TE {
 using KeyCode = uint16_t;
 using MouseCode = uint16_t;
