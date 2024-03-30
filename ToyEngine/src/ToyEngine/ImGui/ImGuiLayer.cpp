@@ -28,7 +28,7 @@ void ImGuiLayer::onAttach() {
   ImGui::StyleColorsDark();
 
   Application& app = Application::get();
-  GLFWwindow* window = static_cast<GLFWwindow*>(app.getWindow().getNativeWindow());
+  GLFWwindow* window = app.getWindow().getNativeWindow();
   GraphicsContext& ctx = GraphicsContext::get();
 
   vk::DescriptorPoolSize pool_sizes[] = {

@@ -31,7 +31,7 @@ class Window {
 
   inline void setEventCallback(const EventCallbackFn& callback) { data.event_callback = callback; }
 
-  inline void* getNativeWindow() const { return window; }
+  inline GLFWwindow* getNativeWindow() const { return window; }
 
   static std::unique_ptr<Window> create(const WindowProps& props = WindowProps());
 
