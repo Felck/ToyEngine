@@ -1,5 +1,6 @@
 #include "Application.hpp"
 
+#include "ToyEngine/Core/Input.hpp"
 #include "ToyEngine/Core/Window.hpp"
 #include "ToyEngine/Renderer/GraphicsContext.hpp"
 
@@ -11,6 +12,7 @@ Application::Application() {
   instance = this;
   window = Window::create();
   window->setEventCallback(BIND_EVENT_FN(onEvent));
+  Input::init(window->getNativeWindow());
 }
 
 Application::~Application() { GraphicsContext::get().getDevice().waitIdle(); }
