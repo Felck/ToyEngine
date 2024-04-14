@@ -1,6 +1,7 @@
 #include "Application.hpp"
 
 #include "ToyEngine/Core/Input.hpp"
+#include "ToyEngine/Core/Timestep.hpp"
 #include "ToyEngine/Core/Window.hpp"
 #include "ToyEngine/Renderer/GraphicsContext.hpp"
 
@@ -19,11 +20,15 @@ Application::~Application() { GraphicsContext::get().getDevice().waitIdle(); }
 
 void Application::run() {
   while (running) {
+    Timestep time = glfwGetTime();
+    Timestep delta_time = time - lastFrameTime;
+    lastFrameTime = time;
+
     window->onUpdate();
 
     GraphicsContext::get().beginFrame();
     for (auto layer : layerStack) {
-      layer->onUpdate();
+      layer->onUpdate(delta_time);
     }
     GraphicsContext::get().endFrame();
   }

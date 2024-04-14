@@ -10,6 +10,7 @@
 
 #include "ToyEngine/Core/Application.hpp"
 #include "ToyEngine/Core/Layer.hpp"
+#include "ToyEngine/Core/Timestep.hpp"
 #include "ToyEngine/Events/Event.hpp"
 #include "ToyEngine/Renderer/GraphicsContext.hpp"
 #include "tepch.hpp"
@@ -87,7 +88,7 @@ void ImGuiLayer::onDetach() {
   device.destroyRenderPass(render_pass);
 }
 
-void ImGuiLayer::onUpdate() {
+void ImGuiLayer::onUpdate([[maybe_unused]] Timestep dt) {
   ImGui_ImplVulkan_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();

@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "ToyEngine/Core/Layer.hpp"
+#include "ToyEngine/Core/Timestep.hpp"
 #include "ToyEngine/Events/Event.hpp"
 #include "ToyEngine/Renderer/GraphicsContext.hpp"
 
@@ -15,7 +16,7 @@ class ImGuiLayer : public Layer {
 
   virtual void onAttach() override;
   virtual void onDetach() override;
-  virtual void onUpdate() override;
+  virtual void onUpdate(Timestep dt) override;
   virtual void onEvent(Event& e) override;
 
  private:

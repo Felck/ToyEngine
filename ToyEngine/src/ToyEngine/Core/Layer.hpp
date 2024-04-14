@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ToyEngine/Core/Timestep.hpp"
 #include "ToyEngine/Events/Event.hpp"
 #include "tepch.hpp"
 
@@ -12,7 +13,7 @@ class Layer {
 
   virtual void onAttach() {}
   virtual void onDetach() {}
-  virtual void onUpdate() {}
+  virtual void onUpdate([[maybe_unused]] Timestep dt) {}
   virtual void onEvent([[maybe_unused]] Event& event) {}
 
   inline const std::string& getName() const { return name; }

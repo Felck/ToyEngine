@@ -2,6 +2,7 @@
 
 #include "Layer.hpp"
 #include "LayerStack.hpp"
+#include "ToyEngine/Core/Timestep.hpp"
 #include "ToyEngine/Events/Event.hpp"
 #include "ToyEngine/Events/WindowEvent.hpp"
 #include "Window.hpp"
@@ -28,6 +29,7 @@ class Application {
   std::unique_ptr<Window> window;
   LayerStack layerStack;
   bool running = true;
+  Timestep lastFrameTime = 0.0f;
 
   static Application* instance;
 };
