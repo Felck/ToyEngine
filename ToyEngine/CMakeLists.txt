@@ -17,6 +17,15 @@ target_compile_definitions(toyengine PRIVATE
 )
 target_link_libraries(toyengine Vulkan::Vulkan)
 
+# vma
+set_source_files_properties(
+  "src/vendor/vma.cpp"
+  PROPERTIES
+  COMPILE_FLAGS "-w"
+)
+add_subdirectory(vendor/vma)
+target_link_libraries(toyengine GPUOpen::VulkanMemoryAllocator)
+
 # GLFW
 
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
@@ -28,6 +37,7 @@ set(GLFW_VULKAN_STATIC ON CACHE BOOL  "" FORCE)
 target_compile_definitions(toyengine PRIVATE GLFW_INCLUDE_VULKAN)
 
 add_subdirectory(vendor/GLFW)
+target_compile_options(glfw PRIVATE -w) # disable warnings for glfw build
 target_link_libraries(toyengine glfw)
 
 

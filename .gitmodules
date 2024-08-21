@@ -8,3 +8,6 @@
 [submodule "ToyEngine/vendor/glm"]
 	path = ToyEngine/vendor/glm
 	url = https://github.com/g-truc/glm
+[submodule "ToyEngine/vendor/vma"]
+	path = ToyEngine/vendor/vma
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
