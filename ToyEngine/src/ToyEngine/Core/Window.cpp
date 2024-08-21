@@ -26,14 +26,15 @@ void Window::init(const WindowProps& props) {
   data.width = props.Width;
   data.height = props.Height;
 
-  // TODO: assert
-  // TODO: error callback
   glfwInit();
+
+  glfwSetErrorCallback([]([[maybe_unused]] int error, const char* description) {
+    std::cerr << description << std::endl;
+  });
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-  window =
-      glfwCreateWindow((int)props.Width, (int)props.Height, data.title.c_str(), nullptr, nullptr);
+  window = glfwCreateWindow((int)props.Width, (int)props.Height, data.title.c_str(), nullptr, nullptr);
 
   glfwSetWindowUserPointer(window, &data);
 
