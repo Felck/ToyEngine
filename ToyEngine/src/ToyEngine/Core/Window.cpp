@@ -6,7 +6,6 @@
 #include "ToyEngine/Events/MouseEvent.hpp"
 #include "ToyEngine/Events/WindowEvent.hpp"
 #include "ToyEngine/Renderer/GraphicsContext.hpp"
-#include "tepch.hpp"
 
 namespace TE {
 
@@ -111,6 +110,7 @@ void Window::init(const WindowProps& props) {
 }
 
 void Window::shutdown() {
+  graphics_context = nullptr;
   glfwDestroyWindow(window);
   glfwTerminate();
 }
