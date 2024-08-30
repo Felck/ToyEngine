@@ -5,11 +5,9 @@
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_handles.hpp>
 
+#include "ToyEngine/Renderer/Allocator.hpp"
 #include "ToyEngine/Renderer/Device.hpp"
-#include "ToyEngine/Renderer/Shader.hpp"
 #include "ToyEngine/Renderer/SwapChain.hpp"
-#include "ToyEngine/Renderer/VertexArray.hpp"
-#include "tepch.hpp"
 
 namespace TE {
 class GraphicsContext {
@@ -63,6 +61,7 @@ class GraphicsContext {
   };
 
   Device device;
+  Allocator allocator;
   SwapChain swapchain;
   vk::CommandPool transient_command_pool;
   vk::RenderPass render_pass;

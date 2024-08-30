@@ -8,8 +8,6 @@
 #include "ToyEngine/Renderer/Device.hpp"
 #include "ToyEngine/Renderer/Shader.hpp"
 #include "ToyEngine/Renderer/SwapChain.hpp"
-#include "ToyEngine/Renderer/VertexArray.hpp"
-#include "tepch.hpp"
 
 // instantiate the default dispatcher
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
@@ -18,7 +16,8 @@ namespace TE {
 
 GraphicsContext* GraphicsContext::instance = nullptr;
 
-GraphicsContext::GraphicsContext(GLFWwindow* window) : device{window}, swapchain{window, device} {
+GraphicsContext::GraphicsContext(GLFWwindow* window)
+    : device{window}, allocator{device}, swapchain{window, device} {
   assert(instance == nullptr);
   instance = this;
 

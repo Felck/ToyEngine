@@ -4,7 +4,6 @@
 
 #include "ToyEngine/Events/Event.hpp"
 #include "ToyEngine/Renderer/GraphicsContext.hpp"
-#include "tepch.hpp"
 
 namespace TE {
 

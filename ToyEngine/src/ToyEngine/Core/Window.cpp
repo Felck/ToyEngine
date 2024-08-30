@@ -5,7 +5,6 @@
 #include "ToyEngine/Events/KeyEvent.hpp"
 #include "ToyEngine/Events/MouseEvent.hpp"
 #include "ToyEngine/Events/WindowEvent.hpp"
-#include "ToyEngine/Renderer/GraphicsContext.hpp"
 
 namespace TE {
 
@@ -33,7 +32,8 @@ void Window::init(const WindowProps& props) {
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-  window = glfwCreateWindow((int)props.Width, (int)props.Height, data.title.c_str(), nullptr, nullptr);
+  window =
+      glfwCreateWindow((int)props.Width, (int)props.Height, data.title.c_str(), nullptr, nullptr);
 
   glfwSetWindowUserPointer(window, &data);
 
