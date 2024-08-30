@@ -1,0 +1,19 @@
+buildType:
+  default: debug
+  choices:
+    debug:
+      short: Debug
+      long: Emit debug information
+      buildType: Debug
+    release:
+      short: Release
+      long: Optimize generated code
+      buildType: Release
+    asan:
+      short: Asan
+      long: Instrument with Address Sanitizer
+      buildType: Asan
+    tsan:
+      short: Tsan
+      long: Instrument with Thread Sanitizer
+      buildType: Tsan
