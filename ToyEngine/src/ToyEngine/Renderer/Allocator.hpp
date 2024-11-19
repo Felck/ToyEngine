@@ -10,6 +10,8 @@ class Allocator {
   Allocator(Device& device);
   ~Allocator();
 
+  VmaAllocator getAllocator() const { return allocator; }
+
  private:
   VmaAllocator allocator;
 };

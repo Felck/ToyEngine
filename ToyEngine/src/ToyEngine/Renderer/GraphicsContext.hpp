@@ -17,6 +17,7 @@ class GraphicsContext {
 
   inline static GraphicsContext& get() { return *instance; }
 
+  inline VmaAllocator getAllocator() const { return allocator.getAllocator(); }
   inline vk::Instance getInstance() const { return device.getInstance(); }
   inline vk::Device getDevice() const { return device.getDevice(); }
   inline vk::PhysicalDevice getGPU() const { return device.getGPU(); }

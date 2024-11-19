@@ -2,11 +2,11 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include "Allocator.hpp"
 #include "GraphicsContext.hpp"
-#include "tepch.hpp"
 
 namespace TE {
-Buffer::Buffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties)
+Buffer::Buffer(vk::DeviceSize size, vk::BufferUsageFlags usage, VmaAllocationCreateFlags flags)
     : size{size} {
   auto& ctx = GraphicsContext::get();
   vk::BufferCreateInfo buffer_info{
@@ -14,28 +14,26 @@ Buffer::Buffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryProper
       .usage = usage,
       .sharingMode = vk::SharingMode::eExclusive,
   };
-  buffer = ctx.getDevice().createBuffer(buffer_info);
-  vk::MemoryRequirements mem_requirements = ctx.getDevice().getBufferMemoryRequirements(buffer);
 
-  vk::MemoryAllocateInfo alloc_info{
-      .allocationSize = mem_requirements.size,
-      .memoryTypeIndex = findMemoryType(ctx.getGPU(), mem_requirements.memoryTypeBits, properties),
-  };
-  memory = ctx.getDevice().allocateMemory(alloc_info);
-  ctx.getDevice().bindBufferMemory(buffer, memory, 0);
+  VmaAllocationCreateInfo alloc_info{};
+  alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
+  alloc_info.flags = flags;
+
+  auto err = vmaCreateBuffer(ctx.getAllocator(), (VkBufferCreateInfo*)&buffer_info, &alloc_info,
+                             &buffer, &allocation, nullptr);
+  if (err != VK_SUCCESS) {
+    throw std::runtime_error("Failed to create buffer");
+  }
 }
 
-Buffer::~Buffer() {
-  auto& ctx = GraphicsContext::get();
-  ctx.getDevice().destroyBuffer(buffer);
-  ctx.getDevice().freeMemory(memory);
-}
+Buffer::~Buffer() { vmaDestroyBuffer(GraphicsContext::get().getAllocator(), buffer, allocation); }
 
 void Buffer::write(const void* data, VkDeviceSize size, VkDeviceSize offset) const {
-  auto& ctx = GraphicsContext::get();
-  void* mapped = ctx.getDevice().mapMemory(memory, offset, size);
-  memcpy(mapped, data, (size_t)size);
-  ctx.getDevice().unmapMemory(memory);
+  auto err = vmaCopyMemoryToAllocation(GraphicsContext::get().getAllocator(), data, allocation,
+                                       offset, size);
+  if (err != VK_SUCCESS) {
+    throw std::runtime_error("Failed to write to buffer");
+  }
 }
 
 void Buffer::copyTo(Buffer& dst) {
@@ -51,16 +49,4 @@ void Buffer::copyTo(Buffer& dst) {
   });
 }
 
-uint32_t Buffer::findMemoryType(vk::PhysicalDevice gpu, uint32_t type_filter,
-                                vk::MemoryPropertyFlags properties) const {
-  vk::PhysicalDeviceMemoryProperties mem_properties = gpu.getMemoryProperties();
-  for (uint32_t i = 0; i < mem_properties.memoryTypeCount; i++) {
-    if ((type_filter & (1 << i)) &&
-        (mem_properties.memoryTypes[i].propertyFlags & properties) == properties) {
-      return i;
-    }
-  }
-
-  throw std::runtime_error("No suitable memory type.");
-}
 }  // namespace TE

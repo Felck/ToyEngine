@@ -5,7 +5,6 @@
 #include <vulkan/vulkan.hpp>
 
 #include "ToyEngine/Renderer/Device.hpp"
-#include "tepch.hpp"
 
 namespace TE {
 class SwapChain {
