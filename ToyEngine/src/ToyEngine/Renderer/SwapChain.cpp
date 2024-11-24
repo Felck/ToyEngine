@@ -5,6 +5,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "ToyEngine/Renderer/Device.hpp"
+#include "ToyEngine/Renderer/Helpers.hpp"
 
 namespace TE {
 
@@ -61,20 +62,7 @@ void SwapChain::init() {
 
   std::vector<vk::Image> images = device.getDevice().getSwapchainImagesKHR(this->swapchain);
   for (const auto& image : images) {
-    vk::ImageViewCreateInfo image_view_create_info{
-        .image = image,
-        .viewType = vk::ImageViewType::e2D,
-        .format = this->format,
-        .components =
-            {
-                vk::ComponentSwizzle::eR,
-                vk::ComponentSwizzle::eG,
-                vk::ComponentSwizzle::eB,
-                vk::ComponentSwizzle::eA,
-            },
-        .subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1},
-    };
-    this->image_views.push_back(device.getDevice().createImageView(image_view_create_info));
+    this->image_views.push_back(createImageView(device.getDevice(), image, this->format));
   }
 }
 

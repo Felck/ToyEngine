@@ -40,8 +40,6 @@ void Buffer::copyTo(Buffer& dst) {
   auto& ctx = GraphicsContext::get();
   ctx.executeTransient([this, &dst](vk::CommandBuffer cmd) {
     vk::BufferCopy copy_region{
-        .srcOffset = 0,
-        .dstOffset = 0,
         .size = size,
     };
 
