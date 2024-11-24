@@ -11,3 +11,6 @@
 [submodule "ToyEngine/vendor/vma"]
 	path = ToyEngine/vendor/vma
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "ToyEngine/vendor/stb"]
+	path = ToyEngine/vendor/stb
+	url = https://github.com/nothings/stb.git

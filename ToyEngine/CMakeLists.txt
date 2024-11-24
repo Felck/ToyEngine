@@ -19,7 +19,7 @@ target_link_libraries(toyengine Vulkan::Vulkan)
 
 # vma
 set_source_files_properties(
-  "src/vendor/vma.cpp"
+  "src/vendor-impl/vma.cpp"
   PROPERTIES
   COMPILE_FLAGS "-w"
 )
@@ -57,3 +57,7 @@ target_compile_definitions(toyengine PRIVATE
     GLM_FORCE_LEFT_HANDED
 )
 target_link_libraries(toyengine glm)
+
+# stb
+
+target_include_directories(toyengine PUBLIC ${CMAKE_CURRENT_LIST_DIR}/vendor/stb)
