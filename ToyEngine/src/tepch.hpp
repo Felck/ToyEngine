@@ -1,5 +1,7 @@
 #pragma once
 
+// IWYU pragma: begin_exports
+
 #include <stdint.h>
 
 // STL
@@ -14,5 +16,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+// IWYU pragma: end_exports
 
 #define LOG(x) std::cout << x << std::endl
