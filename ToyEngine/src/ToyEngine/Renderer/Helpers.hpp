@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.hpp>
 
 namespace TE {
-vk::ImageView createImageView(vk::Device device, vk::Image image, vk::Format format) {
+inline vk::ImageView createImageView(vk::Device device, vk::Image image, vk::Format format) {
   vk::ImageViewCreateInfo view_info{
       .image = image,
       .viewType = vk::ImageViewType::e2D,
