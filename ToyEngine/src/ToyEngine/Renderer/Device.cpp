@@ -151,8 +151,13 @@ void Device::pickPhysicalDevice() {
   for (size_t i = 0; i < gpus.size() && !found_graphics_queue_index; i++) {
     physical_device = gpus[i];
 
-    auto queue_family_properties = physical_device.getQueueFamilyProperties();
+    vk::PhysicalDeviceFeatures features{};
+    physical_device.getFeatures(&features);
+    if (features.samplerAnisotropy == vk::False) {
+      continue;
+    }
 
+    auto queue_family_properties = physical_device.getQueueFamilyProperties();
     if (queue_family_properties.empty()) {
       throw std::runtime_error("No queue family found.");
     }
@@ -172,6 +177,8 @@ void Device::pickPhysicalDevice() {
   if (!found_graphics_queue_index) {
     throw std::runtime_error("Did not find suitable GPU.");
   }
+
+  properties = physical_device.getProperties();
 }
 
 void Device::createLogicalDevice() {
@@ -187,11 +194,15 @@ void Device::createLogicalDevice() {
       .queueCount = 1,
       .pQueuePriorities = &queue_priority,
   };
+  vk::PhysicalDeviceFeatures device_features{
+      .samplerAnisotropy = vk::True,
+  };
   vk::DeviceCreateInfo device_info{
       .queueCreateInfoCount = 1,
       .pQueueCreateInfos = &queue_info,
       .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
       .ppEnabledExtensionNames = extensions.data(),
+      .pEnabledFeatures = &device_features,
   };
   logical_device = physical_device.createDevice(device_info);
 

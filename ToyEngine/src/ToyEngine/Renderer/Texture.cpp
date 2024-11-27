@@ -1,7 +1,6 @@
 #include "Texture.hpp"
 
 #include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_handles.hpp>
 
 #include "Allocator.hpp"
 #include "Buffer.hpp"
@@ -11,6 +10,31 @@
 #include "tepch.hpp"
 
 namespace TE {
+void createTextureSampler(vk::Sampler& sampler) {
+  vk::SamplerCreateInfo sampler_info{
+      .magFilter = vk::Filter::eLinear,
+      .minFilter = vk::Filter::eLinear,
+      .mipmapMode = vk::SamplerMipmapMode::eLinear,
+      .addressModeU = vk::SamplerAddressMode::eRepeat,
+      .addressModeV = vk::SamplerAddressMode::eRepeat,
+      .addressModeW = vk::SamplerAddressMode::eRepeat,
+      .mipLodBias = 0,
+      .anisotropyEnable = vk::True,
+      .maxAnisotropy = GraphicsContext::get().getDeviceProperties().limits.maxSamplerAnisotropy,
+      .compareEnable = vk::False,
+      .compareOp = vk::CompareOp::eAlways,
+      .minLod = 0,
+      .maxLod = 0,
+      .borderColor = vk::BorderColor::eIntOpaqueBlack,
+      .unnormalizedCoordinates = vk::False,
+  };
+
+  auto err = GraphicsContext::get().getDevice().createSampler(&sampler_info, nullptr, &sampler);
+  if (err != vk::Result::eSuccess) {
+    throw std::runtime_error("Failed to create sampler");
+  }
+}
+
 Texture::Texture(const std::string& path) {
   auto& ctx = GraphicsContext::get();
 
@@ -59,10 +83,13 @@ Texture::Texture(const std::string& path) {
   });
 
   img_view = createImageView(ctx.getDevice(), image, vk::Format::eR8G8B8A8Srgb);
+
+  createTextureSampler(sampler);
 }
 
 Texture::~Texture() {
   auto& ctx = GraphicsContext::get();
+  ctx.getDevice().destroySampler(sampler);
   ctx.getDevice().destroyImageView(img_view);
   vmaDestroyImage(ctx.getAllocator(), image, allocation);
 }

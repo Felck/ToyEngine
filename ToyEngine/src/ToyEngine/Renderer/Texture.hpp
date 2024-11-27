@@ -17,5 +17,6 @@ class Texture {
   VkImage image;
   VmaAllocation allocation;
   vk::ImageView img_view;
+  vk::Sampler sampler;
 };
 }  // namespace TE

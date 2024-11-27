@@ -16,6 +16,7 @@ class Device {
   inline vk::Device getDevice() const { return logical_device; }
   inline vk::Queue getQueue() const { return queue; }
   inline uint32_t getGraphicsQueueIndex() const { return graphics_queue_index; }
+  inline const vk::PhysicalDeviceProperties& getProperties() const { return properties; }
 
  private:
   void createInstance();
@@ -30,5 +31,6 @@ class Device {
   vk::Queue queue;
   vk::DebugUtilsMessengerEXT debug_messenger;
   uint32_t graphics_queue_index;
+  vk::PhysicalDeviceProperties properties;
 };
 }  // namespace TE
