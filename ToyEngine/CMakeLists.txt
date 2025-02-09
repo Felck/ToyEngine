@@ -1,6 +1,6 @@
 # ToyEngine
 
-file(GLOB_RECURSE TE_SOURCE src/*.cpp )
+file(GLOB_RECURSE TE_SOURCE CONFIGURE_DEPENDS src/*.cpp )
 add_library(toyengine STATIC ${TE_SOURCE})
 
 target_include_directories(toyengine PUBLIC ${CMAKE_CURRENT_LIST_DIR}/src)
