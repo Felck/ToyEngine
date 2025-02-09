@@ -36,11 +36,11 @@ class GraphicsContext {
   void beginPass();
   void endPass();
 
-  void record(const std::invocable<vk::CommandBuffer> auto&& commands) const {
+  inline void record(const std::invocable<vk::CommandBuffer> auto&& commands) const {
     commands(frame_data[current_frame].command_buffer);
   }
 
-  void executeTransient(const std::invocable<vk::CommandBuffer> auto&& commands) const {
+  inline void executeTransient(const std::invocable<vk::CommandBuffer> auto&& commands) const {
     vk::CommandBuffer command_buffer = beginTransientExecution();
     commands(command_buffer);
     endTransientExecution(command_buffer);
@@ -50,6 +50,7 @@ class GraphicsContext {
   void createRenderPass();
   void createGraphicsPipeline();
   void createFrameData();
+  void createDescriptorSets();
 
   vk::CommandBuffer beginTransientExecution() const;
   void endTransientExecution(vk::CommandBuffer cmd) const;

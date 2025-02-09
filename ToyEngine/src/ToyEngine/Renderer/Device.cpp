@@ -197,7 +197,21 @@ void Device::createLogicalDevice() {
   vk::PhysicalDeviceFeatures device_features{
       .samplerAnisotropy = vk::True,
   };
+
+  vk::PhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features{};
+  vk::PhysicalDeviceFeatures2 device_features_2{
+      .pNext = &descriptor_indexing_features,
+  };
+  physical_device.getFeatures2(&device_features_2);
+  assert(descriptor_indexing_features.shaderSampledImageArrayNonUniformIndexing);
+  assert(descriptor_indexing_features.descriptorBindingSampledImageUpdateAfterBind);
+  assert(descriptor_indexing_features.shaderUniformBufferArrayNonUniformIndexing);
+  assert(descriptor_indexing_features.descriptorBindingUniformBufferUpdateAfterBind);
+  assert(descriptor_indexing_features.shaderStorageBufferArrayNonUniformIndexing);
+  assert(descriptor_indexing_features.descriptorBindingStorageBufferUpdateAfterBind);
+
   vk::DeviceCreateInfo device_info{
+      .pNext = &device_features_2,
       .queueCreateInfoCount = 1,
       .pQueueCreateInfos = &queue_info,
       .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),

@@ -32,6 +32,7 @@ GraphicsContext::GraphicsContext(GLFWwindow* window)
   createGraphicsPipeline();
   swapchain.createFramebuffers(render_pass);
   createFrameData();
+  createDescriptorSets();
 }
 
 GraphicsContext::~GraphicsContext() {
@@ -332,6 +333,46 @@ void GraphicsContext::createFrameData() {
     };
     frame.command_buffer = device.allocateCommandBuffers(alloc_info)[0];
   }
+}
+
+void GraphicsContext::createDescriptorSets() {
+  vk::DescriptorSetLayoutBinding layout_bindings[] = {
+      {0, vk::DescriptorType::eUniformBuffer, 1000, vk::ShaderStageFlagBits::eAll},
+      {1, vk::DescriptorType::eStorageBuffer, 1000, vk::ShaderStageFlagBits::eAll},
+      {2, vk::DescriptorType::eCombinedImageSampler, 1000, vk::ShaderStageFlagBits::eAll},
+  };
+  vk::DescriptorBindingFlags layout_flags[] = {
+      vk::DescriptorBindingFlagBits::ePartiallyBound |
+          vk::DescriptorBindingFlagBits::eUpdateAfterBind,
+      vk::DescriptorBindingFlagBits::ePartiallyBound |
+          vk::DescriptorBindingFlagBits::eUpdateAfterBind,
+      vk::DescriptorBindingFlagBits::ePartiallyBound |
+          vk::DescriptorBindingFlagBits::eUpdateAfterBind,
+  };
+  vk::DescriptorSetLayoutBindingFlagsCreateInfoEXT binding_flags{
+      .bindingCount = 3,
+      .pBindingFlags = layout_flags,
+  };
+  vk::DescriptorSetLayoutCreateInfo layout_info{
+      .pNext = &binding_flags,
+      .flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool,
+      .bindingCount = 3,
+      .pBindings = layout_bindings,
+  };
+  vk::DescriptorSetLayout layout = device.getDevice().createDescriptorSetLayout(layout_info);
+
+  vk::DescriptorPoolCreateInfo pool_info{
+      .flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
+  };
+  vk::DescriptorPool pool = device.getDevice().createDescriptorPool(pool_info);
+
+  vk::DescriptorSetAllocateInfo alloc_info{
+      .descriptorPool = pool,
+      .descriptorSetCount = 1,
+      .pSetLayouts = &layout,
+  };
+
+  vk::DescriptorSet descriptor_set = device.getDevice().allocateDescriptorSets(alloc_info)[0];
 }
 
 vk::CommandBuffer GraphicsContext::beginTransientExecution() const {
