@@ -61,20 +61,14 @@ void ImGuiLayer::onAttach() {
   init_info.Device = ctx.getDevice();
   init_info.QueueFamily = ctx.getGraphicsQueueIndex();
   init_info.Queue = ctx.getQueue();
-  // init_info.PipelineCache = g_PipelineCache;
   init_info.DescriptorPool = descriptor_pool;
-  init_info.Subpass = 0;
+  init_info.RenderPass = render_pass;
   init_info.MinImageCount = ctx.getSwapChain().getImageCount();
   init_info.ImageCount = ctx.getSwapChain().getImageCount();
   init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-  // init_info.Allocator = g_Allocator;
-  // init_info.CheckVkResultFn = check_vk_result;
-  ImGui_ImplVulkan_Init(&init_info, render_pass);
+  ImGui_ImplVulkan_Init(&init_info);
 
-  ctx.executeTransient([&](VkCommandBuffer cmd) { ImGui_ImplVulkan_CreateFontsTexture(cmd); });
-
-  // clear font textures from cpu data
-  ImGui_ImplVulkan_DestroyFontUploadObjects();
+  ImGui_ImplVulkan_CreateFontsTexture();
 }
 
 void ImGuiLayer::onDetach() {
@@ -98,7 +92,7 @@ void ImGuiLayer::onUpdate([[maybe_unused]] Timestep dt) {
   ImGui::Render();
   ImDrawData* draw_data = ImGui::GetDrawData();
 
-  GraphicsContext::get().record([=](auto cmd) {
+  GraphicsContext::get().record([=, this](auto cmd) {
     auto& swapchain = GraphicsContext::get().getSwapChain();
     vk::ClearValue clear_value{{{{0.01f, 0.01f, 0.033f, 1.0f}}}};
 
