@@ -2,8 +2,10 @@
 
 #include <GLFW/glfw3.h>
 
+#include <array>
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_structs.hpp>
 
 #include "ToyEngine/Renderer/Device.hpp"
 #include "ToyEngine/Renderer/Shader.hpp"
@@ -344,8 +346,8 @@ void GraphicsContext::createFrameData() {
 }
 
 void GraphicsContext::createDescriptorSets() {
-  vk::DescriptorSetLayoutBinding layout_bindings[] = {
-      {
+  std::array<vk::DescriptorSetLayoutBinding, 3> layout_bindings = {
+      vk::DescriptorSetLayoutBinding{
           .binding = 0,
           .descriptorType = vk::DescriptorType::eUniformBuffer,
           .descriptorCount = UNIFORM_BUFFER_COUNT,
@@ -364,7 +366,7 @@ void GraphicsContext::createDescriptorSets() {
           .stageFlags = vk::ShaderStageFlagBits::eAll,
       },
   };
-  vk::DescriptorBindingFlags layout_flags[] = {
+  std::array<vk::DescriptorBindingFlags, layout_bindings.size()> layout_flags = {
       vk::DescriptorBindingFlagBits::ePartiallyBound |
           vk::DescriptorBindingFlagBits::eUpdateAfterBind,
       vk::DescriptorBindingFlagBits::ePartiallyBound |
@@ -373,36 +375,45 @@ void GraphicsContext::createDescriptorSets() {
           vk::DescriptorBindingFlagBits::eUpdateAfterBind,
   };
   vk::DescriptorSetLayoutBindingFlagsCreateInfoEXT binding_flags{
-      .bindingCount = 3,
-      .pBindingFlags = layout_flags,
+      .bindingCount = layout_flags.size(),
+      .pBindingFlags = layout_flags.data(),
   };
   vk::DescriptorSetLayoutCreateInfo layout_info{
       .pNext = &binding_flags,
       .flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool,
-      .bindingCount = 3,
-      .pBindings = layout_bindings,
+      .bindingCount = layout_bindings.size(),
+      .pBindings = layout_bindings.data(),
   };
   descriptor_set_layout = device.getDevice().createDescriptorSetLayout(layout_info);
 
-  vk::DescriptorPoolSize pool_sizes[] = {
-      {vk::DescriptorType::eUniformBuffer, UNIFORM_BUFFER_COUNT},
-      {vk::DescriptorType::eStorageBuffer, STORAGE_BUFFER_COUNT},
-      {vk::DescriptorType::eCombinedImageSampler, TEXTURE_COUNT},
+  std::array<vk::DescriptorPoolSize, layout_bindings.size()> pool_sizes = {
+      vk::DescriptorPoolSize{
+          .type = vk::DescriptorType::eUniformBuffer,
+          .descriptorCount = UNIFORM_BUFFER_COUNT,
+      },
+      {
+          .type = vk::DescriptorType::eStorageBuffer,
+          .descriptorCount = STORAGE_BUFFER_COUNT,
+      },
+      {
+          .type = vk::DescriptorType::eCombinedImageSampler,
+          .descriptorCount = TEXTURE_COUNT,
+      },
   };
   vk::DescriptorPoolCreateInfo pool_info{
       .flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
-      .maxSets = 1,
-      .poolSizeCount = 3,
-      .pPoolSizes = pool_sizes,
+      .maxSets = layout_bindings.size(),
+      .poolSizeCount = pool_sizes.size(),
+      .pPoolSizes = pool_sizes.data(),
   };
   descriptor_pool = device.getDevice().createDescriptorPool(pool_info);
 
   vk::DescriptorSetAllocateInfo alloc_info{
       .descriptorPool = descriptor_pool,
-      .descriptorSetCount = 1,
+      .descriptorSetCount = layout_bindings.size(),
       .pSetLayouts = &descriptor_set_layout,
   };
-  descriptor_set = device.getDevice().allocateDescriptorSets(alloc_info)[0];
+  descriptor_sets = device.getDevice().allocateDescriptorSets(alloc_info);
 }
 
 vk::CommandBuffer GraphicsContext::beginTransientExecution() const {

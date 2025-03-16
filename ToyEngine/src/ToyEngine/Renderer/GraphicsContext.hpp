@@ -2,6 +2,7 @@
 
 #include <GLFW/glfw3.h>
 
+#include <vector>
 #include <vulkan/vulkan.hpp>
 
 #include "ToyEngine/Renderer/Allocator.hpp"
@@ -69,7 +70,7 @@ class GraphicsContext {
   vk::RenderPass render_pass;
   vk::DescriptorSetLayout descriptor_set_layout;
   vk::DescriptorPool descriptor_pool;
-  vk::DescriptorSet descriptor_set;
+  std::vector<vk::DescriptorSet> descriptor_sets;
   vk::PipelineLayout pipeline_layout;
   vk::Pipeline graphics_pipeline;
 
