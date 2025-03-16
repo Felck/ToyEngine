@@ -402,7 +402,7 @@ void GraphicsContext::createDescriptorSets() {
   };
   vk::DescriptorPoolCreateInfo pool_info{
       .flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
-      .maxSets = layout_bindings.size(),
+      .maxSets = 1,
       .poolSizeCount = pool_sizes.size(),
       .pPoolSizes = pool_sizes.data(),
   };
