@@ -29,10 +29,10 @@ GraphicsContext::GraphicsContext(GLFWwindow* window)
   transient_command_pool = device.getDevice().createCommandPool(pool_info);
 
   createRenderPass();
+  createDescriptorSets();
   createGraphicsPipeline();
   swapchain.createFramebuffers(render_pass);
   createFrameData();
-  createDescriptorSets();
 }
 
 GraphicsContext::~GraphicsContext() {
@@ -51,6 +51,14 @@ GraphicsContext::~GraphicsContext() {
 
   if (pipeline_layout) {
     device.destroyPipelineLayout(pipeline_layout);
+  }
+
+  if (descriptor_pool) {
+    device.destroyDescriptorPool(descriptor_pool);
+  }
+
+  if (descriptor_set_layout) {
+    device.destroyDescriptorSetLayout(descriptor_set_layout);
   }
 
   if (render_pass) {
@@ -337,9 +345,24 @@ void GraphicsContext::createFrameData() {
 
 void GraphicsContext::createDescriptorSets() {
   vk::DescriptorSetLayoutBinding layout_bindings[] = {
-      {0, vk::DescriptorType::eUniformBuffer, 1000, vk::ShaderStageFlagBits::eAll},
-      {1, vk::DescriptorType::eStorageBuffer, 1000, vk::ShaderStageFlagBits::eAll},
-      {2, vk::DescriptorType::eCombinedImageSampler, 1000, vk::ShaderStageFlagBits::eAll},
+      {
+          .binding = 0,
+          .descriptorType = vk::DescriptorType::eUniformBuffer,
+          .descriptorCount = UNIFORM_BUFFER_COUNT,
+          .stageFlags = vk::ShaderStageFlagBits::eAll,
+      },
+      {
+          .binding = 1,
+          .descriptorType = vk::DescriptorType::eStorageBuffer,
+          .descriptorCount = STORAGE_BUFFER_COUNT,
+          .stageFlags = vk::ShaderStageFlagBits::eAll,
+      },
+      {
+          .binding = 2,
+          .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+          .descriptorCount = TEXTURE_COUNT,
+          .stageFlags = vk::ShaderStageFlagBits::eAll,
+      },
   };
   vk::DescriptorBindingFlags layout_flags[] = {
       vk::DescriptorBindingFlagBits::ePartiallyBound |
@@ -359,20 +382,27 @@ void GraphicsContext::createDescriptorSets() {
       .bindingCount = 3,
       .pBindings = layout_bindings,
   };
-  vk::DescriptorSetLayout layout = device.getDevice().createDescriptorSetLayout(layout_info);
+  descriptor_set_layout = device.getDevice().createDescriptorSetLayout(layout_info);
 
+  vk::DescriptorPoolSize pool_sizes[] = {
+      {vk::DescriptorType::eUniformBuffer, UNIFORM_BUFFER_COUNT},
+      {vk::DescriptorType::eStorageBuffer, STORAGE_BUFFER_COUNT},
+      {vk::DescriptorType::eCombinedImageSampler, TEXTURE_COUNT},
+  };
   vk::DescriptorPoolCreateInfo pool_info{
       .flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
+      .maxSets = 1,
+      .poolSizeCount = 3,
+      .pPoolSizes = pool_sizes,
   };
-  vk::DescriptorPool pool = device.getDevice().createDescriptorPool(pool_info);
+  descriptor_pool = device.getDevice().createDescriptorPool(pool_info);
 
   vk::DescriptorSetAllocateInfo alloc_info{
-      .descriptorPool = pool,
+      .descriptorPool = descriptor_pool,
       .descriptorSetCount = 1,
-      .pSetLayouts = &layout,
+      .pSetLayouts = &descriptor_set_layout,
   };
-
-  vk::DescriptorSet descriptor_set = device.getDevice().allocateDescriptorSets(alloc_info)[0];
+  descriptor_set = device.getDevice().allocateDescriptorSets(alloc_info)[0];
 }
 
 vk::CommandBuffer GraphicsContext::beginTransientExecution() const {

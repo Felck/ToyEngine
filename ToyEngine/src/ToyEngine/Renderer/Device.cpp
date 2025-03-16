@@ -20,9 +20,9 @@ bool validateLayers() {
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-    [[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData) {
+    [[maybe_unused]] vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    [[maybe_unused]] vk::DebugUtilsMessageTypeFlagsEXT messageType,
+    const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData) {
   std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
 
   return VK_FALSE;
@@ -194,15 +194,15 @@ void Device::createLogicalDevice() {
       .queueCount = 1,
       .pQueuePriorities = &queue_priority,
   };
-  vk::PhysicalDeviceFeatures device_features{
-      .samplerAnisotropy = vk::True,
-  };
 
+  vk::PhysicalDeviceFeatures device_features{};
   vk::PhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features{};
   vk::PhysicalDeviceFeatures2 device_features_2{
       .pNext = &descriptor_indexing_features,
+      .features = device_features,
   };
   physical_device.getFeatures2(&device_features_2);
+  assert(device_features_2.features.samplerAnisotropy);
   assert(descriptor_indexing_features.shaderSampledImageArrayNonUniformIndexing);
   assert(descriptor_indexing_features.descriptorBindingSampledImageUpdateAfterBind);
   assert(descriptor_indexing_features.shaderUniformBufferArrayNonUniformIndexing);
@@ -216,7 +216,6 @@ void Device::createLogicalDevice() {
       .pQueueCreateInfos = &queue_info,
       .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
       .ppEnabledExtensionNames = extensions.data(),
-      .pEnabledFeatures = &device_features,
   };
   logical_device = physical_device.createDevice(device_info);
 

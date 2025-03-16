@@ -3,7 +3,6 @@
 #include <GLFW/glfw3.h>
 
 #include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_handles.hpp>
 
 #include "ToyEngine/Renderer/Allocator.hpp"
 #include "ToyEngine/Renderer/Device.hpp"
@@ -68,6 +67,9 @@ class GraphicsContext {
   SwapChain swapchain;
   vk::CommandPool transient_command_pool;
   vk::RenderPass render_pass;
+  vk::DescriptorSetLayout descriptor_set_layout;
+  vk::DescriptorPool descriptor_pool;
+  vk::DescriptorSet descriptor_set;
   vk::PipelineLayout pipeline_layout;
   vk::Pipeline graphics_pipeline;
 
@@ -76,5 +78,8 @@ class GraphicsContext {
   uint32_t current_frame = 0;
 
   static GraphicsContext* instance;
+  static constexpr uint32_t UNIFORM_BUFFER_COUNT = 1000;
+  static constexpr uint32_t STORAGE_BUFFER_COUNT = 1000;
+  static constexpr uint32_t TEXTURE_COUNT = 1000;
 };
 }  // namespace TE
