@@ -10,6 +10,7 @@
 #include "ToyEngine/Renderer/Device.hpp"
 #include "ToyEngine/Renderer/Shader.hpp"
 #include "ToyEngine/Renderer/SwapChain.hpp"
+#include "ToyEngine/Renderer/VertexArray.hpp"
 
 // instantiate the default dispatcher
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
@@ -201,150 +202,6 @@ void GraphicsContext::createRenderPass() {
   render_pass = device.getDevice().createRenderPass(render_pass_info);
 }
 
-void GraphicsContext::createGraphicsPipeline() {
-  auto device = this->device.getDevice();
-
-  std::vector<vk::DynamicState> dynamic_states{
-      vk::DynamicState::eViewport,
-      vk::DynamicState::eScissor,
-  };
-
-  vk::PipelineDynamicStateCreateInfo dynamic_state{
-      .dynamicStateCount = static_cast<uint32_t>(dynamic_states.size()),
-      .pDynamicStates = dynamic_states.data(),
-  };
-
-  vk::VertexInputBindingDescription binding_desc{
-      .binding = 0,
-      .stride = sizeof(float) * 2,
-      .inputRate = vk::VertexInputRate::eVertex,
-  };
-
-  vk::VertexInputAttributeDescription attribute_desc{
-      .location = 0,
-      .binding = 0,
-      .format = vk::Format::eR32G32Sfloat,
-      .offset = 0,
-  };
-
-  vk::PipelineVertexInputStateCreateInfo vertex_input{
-      .vertexBindingDescriptionCount = 1,
-      .pVertexBindingDescriptions = &binding_desc,
-      .vertexAttributeDescriptionCount = 1,
-      .pVertexAttributeDescriptions = &attribute_desc,
-  };
-
-  vk::PipelineInputAssemblyStateCreateInfo input_assembly{
-      .topology = vk::PrimitiveTopology::eTriangleList,
-      .primitiveRestartEnable = vk::False,
-  };
-
-  vk::PipelineViewportStateCreateInfo viewport{
-      .viewportCount = 1,
-      .scissorCount = 1,
-  };
-
-  vk::PipelineRasterizationStateCreateInfo rasterization{
-      .depthClampEnable = vk::False,
-      .rasterizerDiscardEnable = vk::False,
-      .polygonMode = vk::PolygonMode::eFill,
-      .cullMode = vk::CullModeFlagBits::eBack,
-      .frontFace = vk::FrontFace::eClockwise,
-      .depthBiasEnable = vk::False,
-      .lineWidth = 1.0f,
-  };
-
-  vk::PipelineMultisampleStateCreateInfo multisampling{
-      .rasterizationSamples = vk::SampleCountFlagBits::e1,
-      .sampleShadingEnable = vk::False,
-  };
-
-  vk::PipelineDepthStencilStateCreateInfo depth_stencil;
-
-  vk::PipelineColorBlendAttachmentState blend_attachment{
-      .blendEnable = vk::False,
-      .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-                        vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-  };
-
-  vk::PipelineColorBlendStateCreateInfo color_blending{
-      .logicOpEnable = vk::False,
-      .attachmentCount = 1,
-      .pAttachments = &blend_attachment,
-  };
-
-  vk::PushConstantRange push_constants{
-      .stageFlags = vk::ShaderStageFlagBits::eVertex,
-      .offset = 0,
-      .size = sizeof(glm::mat4),
-  };
-
-  vk::PipelineLayoutCreateInfo pipeline_layout_info{
-      .pushConstantRangeCount = 1,
-      .pPushConstantRanges = &push_constants,
-
-  };
-
-  pipeline_layout = device.createPipelineLayout(pipeline_layout_info);
-
-  std::vector<Shader> shaders{
-      {"triangle.vert", ShaderType::VERTEX},
-      {"triangle.frag", ShaderType::FRAGMENT},
-  };
-  std::vector<vk::PipelineShaderStageCreateInfo> shader_stages;
-  for (auto& shader : shaders) {
-    shader_stages.emplace_back(shader.getStageCreateInfo(device));
-  }
-
-  vk::GraphicsPipelineCreateInfo pipeline_info{
-      .stageCount = 2,
-      .pStages = shader_stages.data(),
-      .pVertexInputState = &vertex_input,
-      .pInputAssemblyState = &input_assembly,
-      .pViewportState = &viewport,
-      .pRasterizationState = &rasterization,
-      .pMultisampleState = &multisampling,
-      .pDepthStencilState = &depth_stencil,
-      .pColorBlendState = &color_blending,
-      .pDynamicState = &dynamic_state,
-      .layout = pipeline_layout,
-      .renderPass = render_pass,
-      .subpass = 0,
-  };
-
-  vk::Result res;  // TODO: check result
-  std::tie(res, graphics_pipeline) = device.createGraphicsPipeline(nullptr, pipeline_info);
-
-  for (auto& stage : shader_stages) {
-    device.destroyShaderModule(stage.module);
-  }
-}
-
-void GraphicsContext::createFrameData() {
-  auto device = this->device.getDevice();
-
-  max_frames_in_flight = 2;
-  frame_data.resize(max_frames_in_flight);
-
-  vk::CommandPoolCreateInfo pool_info{
-      .queueFamilyIndex = this->device.getGraphicsQueueIndex(),
-  };
-
-  for (auto& frame : frame_data) {
-    frame.command_pool = device.createCommandPool(pool_info);
-    frame.submit_fence = device.createFence({.flags = vk::FenceCreateFlagBits::eSignaled});
-    frame.acquire_semaphore = device.createSemaphore({});
-    frame.release_semaphore = device.createSemaphore({});
-
-    vk::CommandBufferAllocateInfo alloc_info{
-        .commandPool = frame.command_pool,
-        .level = vk::CommandBufferLevel::ePrimary,
-        .commandBufferCount = 1,
-    };
-    frame.command_buffer = device.allocateCommandBuffers(alloc_info)[0];
-  }
-}
-
 void GraphicsContext::createDescriptorSets() {
   std::array<vk::DescriptorSetLayoutBinding, 3> layout_bindings = {
       vk::DescriptorSetLayoutBinding{
@@ -410,10 +267,163 @@ void GraphicsContext::createDescriptorSets() {
 
   vk::DescriptorSetAllocateInfo alloc_info{
       .descriptorPool = descriptor_pool,
-      .descriptorSetCount = layout_bindings.size(),
+      .descriptorSetCount = 1,
       .pSetLayouts = &descriptor_set_layout,
   };
-  descriptor_sets = device.getDevice().allocateDescriptorSets(alloc_info);
+  descriptor_set = device.getDevice().allocateDescriptorSets(alloc_info)[0];
+}
+
+void GraphicsContext::createGraphicsPipeline() {
+  auto device = this->device.getDevice();
+
+  std::array<vk::DynamicState, 2> dynamic_states{
+      vk::DynamicState::eViewport,
+      vk::DynamicState::eScissor,
+  };
+
+  vk::PipelineDynamicStateCreateInfo dynamic_state{
+      .dynamicStateCount = static_cast<uint32_t>(dynamic_states.size()),
+      .pDynamicStates = dynamic_states.data(),
+  };
+
+  vk::VertexInputBindingDescription binding_desc{
+      .binding = 0,
+      .stride = sizeof(VertexArray::VertexType),
+      .inputRate = vk::VertexInputRate::eVertex,
+  };
+
+  std::array<vk::VertexInputAttributeDescription, 2> attribute_descs = {
+      vk::VertexInputAttributeDescription{
+          .location = 0,
+          .binding = 0,
+          .format = vk::Format::eR32G32Sfloat,
+          .offset = offsetof(VertexArray::VertexType, pos),
+      },
+      {
+          .location = 1,
+          .binding = 0,
+          .format = vk::Format::eR32G32Sfloat,
+          .offset = offsetof(VertexArray::VertexType, uv),
+      },
+  };
+
+  vk::PipelineVertexInputStateCreateInfo vertex_input{
+      .vertexBindingDescriptionCount = 1,
+      .pVertexBindingDescriptions = &binding_desc,
+      .vertexAttributeDescriptionCount = attribute_descs.size(),
+      .pVertexAttributeDescriptions = attribute_descs.data(),
+  };
+
+  vk::PipelineInputAssemblyStateCreateInfo input_assembly{
+      .topology = vk::PrimitiveTopology::eTriangleList,
+      .primitiveRestartEnable = vk::False,
+  };
+
+  vk::PipelineViewportStateCreateInfo viewport{
+      .viewportCount = 1,
+      .scissorCount = 1,
+  };
+
+  vk::PipelineRasterizationStateCreateInfo rasterization{
+      .depthClampEnable = vk::False,
+      .rasterizerDiscardEnable = vk::False,
+      .polygonMode = vk::PolygonMode::eFill,
+      .cullMode = vk::CullModeFlagBits::eBack,
+      .frontFace = vk::FrontFace::eClockwise,
+      .depthBiasEnable = vk::False,
+      .lineWidth = 1.0f,
+  };
+
+  vk::PipelineMultisampleStateCreateInfo multisampling{
+      .rasterizationSamples = vk::SampleCountFlagBits::e1,
+      .sampleShadingEnable = vk::False,
+  };
+
+  vk::PipelineDepthStencilStateCreateInfo depth_stencil;
+
+  vk::PipelineColorBlendAttachmentState blend_attachment{
+      .blendEnable = vk::False,
+      .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+                        vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+  };
+
+  vk::PipelineColorBlendStateCreateInfo color_blending{
+      .logicOpEnable = vk::False,
+      .attachmentCount = 1,
+      .pAttachments = &blend_attachment,
+  };
+
+  vk::PushConstantRange push_constants{
+      .stageFlags = vk::ShaderStageFlagBits::eVertex,
+      .offset = 0,
+      .size = sizeof(glm::mat4),
+  };
+
+  vk::PipelineLayoutCreateInfo pipeline_layout_info{
+      .setLayoutCount = 1,
+      .pSetLayouts = &descriptor_set_layout,
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges = &push_constants,
+  };
+
+  pipeline_layout = device.createPipelineLayout(pipeline_layout_info);
+
+  std::vector<Shader> shaders{
+      {"triangle.vert", ShaderType::VERTEX},
+      {"triangle.frag", ShaderType::FRAGMENT},
+  };
+  std::vector<vk::PipelineShaderStageCreateInfo> shader_stages;
+  for (auto& shader : shaders) {
+    shader_stages.emplace_back(shader.getStageCreateInfo(device));
+  }
+
+  vk::GraphicsPipelineCreateInfo pipeline_info{
+      .stageCount = 2,
+      .pStages = shader_stages.data(),
+      .pVertexInputState = &vertex_input,
+      .pInputAssemblyState = &input_assembly,
+      .pViewportState = &viewport,
+      .pRasterizationState = &rasterization,
+      .pMultisampleState = &multisampling,
+      .pDepthStencilState = &depth_stencil,
+      .pColorBlendState = &color_blending,
+      .pDynamicState = &dynamic_state,
+      .layout = pipeline_layout,
+      .renderPass = render_pass,
+      .subpass = 0,
+  };
+
+  vk::Result res;  // TODO: check result
+  std::tie(res, graphics_pipeline) = device.createGraphicsPipeline(nullptr, pipeline_info);
+
+  for (auto& stage : shader_stages) {
+    device.destroyShaderModule(stage.module);
+  }
+}
+
+void GraphicsContext::createFrameData() {
+  auto device = this->device.getDevice();
+
+  max_frames_in_flight = 2;
+  frame_data.resize(max_frames_in_flight);
+
+  vk::CommandPoolCreateInfo pool_info{
+      .queueFamilyIndex = this->device.getGraphicsQueueIndex(),
+  };
+
+  for (auto& frame : frame_data) {
+    frame.command_pool = device.createCommandPool(pool_info);
+    frame.submit_fence = device.createFence({.flags = vk::FenceCreateFlagBits::eSignaled});
+    frame.acquire_semaphore = device.createSemaphore({});
+    frame.release_semaphore = device.createSemaphore({});
+
+    vk::CommandBufferAllocateInfo alloc_info{
+        .commandPool = frame.command_pool,
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = 1,
+    };
+    frame.command_buffer = device.allocateCommandBuffers(alloc_info)[0];
+  }
 }
 
 vk::CommandBuffer GraphicsContext::beginTransientExecution() const {

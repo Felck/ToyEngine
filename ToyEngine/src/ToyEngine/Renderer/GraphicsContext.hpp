@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_handles.hpp>
 
 #include "ToyEngine/Renderer/Allocator.hpp"
 #include "ToyEngine/Renderer/Device.hpp"
@@ -25,6 +26,7 @@ class GraphicsContext {
   inline vk::CommandPool getCommandPool() const { return transient_command_pool; }
   inline vk::Queue getQueue() const { return device.getQueue(); }
   inline uint32_t getGraphicsQueueIndex() const { return device.getGraphicsQueueIndex(); }
+  inline vk::DescriptorSet getDescriptorSet() const { return descriptor_set; }
   inline vk::PipelineLayout getPipelineLayout() const { return pipeline_layout; }
   inline const SwapChain& getSwapChain() const { return swapchain; }
   inline vk::CommandBuffer getCommandBuffer() const {
@@ -48,9 +50,9 @@ class GraphicsContext {
 
  private:
   void createRenderPass();
+  void createDescriptorSets();
   void createGraphicsPipeline();
   void createFrameData();
-  void createDescriptorSets();
 
   vk::CommandBuffer beginTransientExecution() const;
   void endTransientExecution(vk::CommandBuffer cmd) const;
@@ -70,7 +72,7 @@ class GraphicsContext {
   vk::RenderPass render_pass;
   vk::DescriptorSetLayout descriptor_set_layout;
   vk::DescriptorPool descriptor_pool;
-  std::vector<vk::DescriptorSet> descriptor_sets;
+  vk::DescriptorSet descriptor_set;
   vk::PipelineLayout pipeline_layout;
   vk::Pipeline graphics_pipeline;
 

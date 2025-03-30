@@ -7,12 +7,24 @@
 #include "ToyEngine/Core/Timestep.hpp"
 #include "ToyEngine/ImGui/ImGuiLayer.hpp"
 #include "ToyEngine/Renderer/Scene.hpp"
+#include "ToyEngine/Renderer/Texture.hpp"
+#include "ToyEngine/Renderer/VertexArray.hpp"
 
 class MainLayer : public TE::Layer {
  public:
   MainLayer() : Layer("Main") {
-    scene.add(std::vector<float>{0.0, -0.5, 0.5, 0.5, -0.5, 0.5}, std::vector<uint16_t>{0, 1, 2});
+    textures.emplace_back("assets/textures/Mona_Lisa.png", 0);
+
+    scene.add(
+        std::vector<TE::VertexArray::VertexType>{
+            {{0.5, -0.5, 0.0}, {1.0, 0.0}},
+            {{0.5, 0.5, 0.0}, {1.0, 0.5}},
+            {{-0.5, 0.5, 0.0}, {0.0, 0.5}},
+            {{-0.5, -0.5, 0.0}, {0.0, 0.0}},
+        },
+        std::vector<uint16_t>{0, 1, 2, 2, 3, 0});
   }
+
   void onUpdate(TE::Timestep dt) {
     if (TE::Input::isKeyPressed(TE::Key::Left)) {
       scene.camera.move(-2.0f * dt, 0.0f, 0.0f);
@@ -31,6 +43,7 @@ class MainLayer : public TE::Layer {
 
  private:
   TE::Scene scene;
+  std::vector<TE::Texture> textures;
 };
 
 class Sandbox : public TE::Application {

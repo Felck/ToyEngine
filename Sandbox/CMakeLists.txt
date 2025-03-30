@@ -8,7 +8,7 @@ target_link_libraries(sandbox toyengine)
 
 find_package(Vulkan COMPONENTS glslangValidator REQUIRED)
 
-file(GLOB_RECURSE GLSL_SOURCE_FILES "src/shaders/*")
+file(GLOB_RECURSE GLSL_SOURCE_FILES CONFIGURE_DEPENDS "src/shaders/*")
 
 foreach(GLSL ${GLSL_SOURCE_FILES})
   get_filename_component(FILE_NAME ${GLSL} NAME)
@@ -30,4 +30,5 @@ add_custom_command(TARGET sandbox POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
     "${PROJECT_BINARY_DIR}/shaders"
     "$<TARGET_FILE_DIR:sandbox>/shaders"
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_CURRENT_SOURCE_DIR}/assets/" "$<TARGET_FILE_DIR:sandbox>/assets"
 )

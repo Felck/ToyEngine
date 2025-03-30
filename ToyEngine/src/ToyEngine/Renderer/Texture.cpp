@@ -1,6 +1,8 @@
 #include "Texture.hpp"
 
+#include <cstdint>
 #include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_handles.hpp>
 
 #include "Allocator.hpp"
 #include "Buffer.hpp"
@@ -35,15 +37,17 @@ void createTextureSampler(vk::Sampler& sampler) {
   }
 }
 
-Texture::Texture(const std::string& path) {
+Texture::Texture(const std::string& path, uint32_t index) {
   auto& ctx = GraphicsContext::get();
 
   int width, height, channels;
   stbi_uc* img = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
-  assert(img != nullptr);
+  if (!img) {
+    throw std::runtime_error("Failed to load texture " + path);
+  }
 
-  auto buffer = Buffer::createStagingBuffer(width * height * channels);
-  buffer.write(img, width * height * channels, 0);
+  auto buffer = Buffer::createStagingBuffer(width * height * 4);
+  buffer.write(img, width * height * 4, 0);
   stbi_image_free(img);
 
   vk::ImageCreateInfo image_info{
@@ -85,6 +89,21 @@ Texture::Texture(const std::string& path) {
   img_view = createImageView(ctx.getDevice(), image, vk::Format::eR8G8B8A8Srgb);
 
   createTextureSampler(sampler);
+
+  vk::DescriptorImageInfo desc_img_info{
+      .sampler = sampler,
+      .imageView = img_view,
+      .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+  };
+  vk::WriteDescriptorSet write_set{
+      .dstSet = ctx.getDescriptorSet(),
+      .dstBinding = 2,
+      .dstArrayElement = index,
+      .descriptorCount = 1,
+      .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+      .pImageInfo = &desc_img_info,
+  };
+  ctx.getDevice().updateDescriptorSets(write_set, nullptr);
 }
 
 Texture::~Texture() {

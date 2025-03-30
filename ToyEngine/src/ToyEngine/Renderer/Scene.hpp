@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ToyEngine/Renderer/Camera.hpp"
-#include "ToyEngine/Renderer/GraphicsContext.hpp"
 #include "ToyEngine/Renderer/VertexArray.hpp"
 #include "tepch.hpp"
 

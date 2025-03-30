@@ -55,6 +55,7 @@ add_subdirectory(vendor/glm)
 target_compile_definitions(toyengine PRIVATE
     GLM_FORCE_DEPTH_ZERO_TO_ONE
     GLM_FORCE_LEFT_HANDED
+    GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 )
 target_link_libraries(toyengine glm)
 
