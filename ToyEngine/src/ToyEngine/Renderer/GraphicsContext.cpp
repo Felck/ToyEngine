@@ -356,7 +356,7 @@ void GraphicsContext::createGraphicsPipeline() {
   vk::PushConstantRange push_constants{
       .stageFlags = vk::ShaderStageFlagBits::eVertex,
       .offset = 0,
-      .size = sizeof(glm::mat4),
+      .size = sizeof(glm::mat4) * sizeof(uint32_t),  // scene.cpp DrawParameters
   };
 
   vk::PipelineLayoutCreateInfo pipeline_layout_info{

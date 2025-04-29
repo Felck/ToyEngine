@@ -3,8 +3,6 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "glm/ext/matrix_transform.hpp"
-
 namespace TE {
 
 Camera::Camera(glm::vec3 position, glm::vec3 lookAt) {

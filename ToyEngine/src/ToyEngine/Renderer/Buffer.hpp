@@ -32,6 +32,14 @@ class Buffer {
     };
   }
 
+  inline static Buffer createUniformBuffer(vk::DeviceSize size) {
+    return Buffer{
+        size,
+        vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst,
+        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+    };
+  }
+
   inline static Buffer createStagingBuffer(vk::DeviceSize size) {
     return Buffer{
         size,
