@@ -1,5 +1,7 @@
 #include "Scene.hpp"
 
+#include <sys/types.h>
+
 #include "ToyEngine/Renderer/Buffer.hpp"
 #include "ToyEngine/Renderer/GraphicsContext.hpp"
 #include "glm/ext/matrix_transform.hpp"

@@ -38,12 +38,16 @@ class MainLayer : public TE::Layer {
     if (TE::Input::isKeyPressed(TE::Key::Down)) {
       scene.camera.move(0.0f, -2.0 * dt, 0.0f);
     }
+
+    world = glm::rotate(world, dt * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    scene.ubo.write(&world, sizeof(glm::mat4), 0);
     scene.draw();
   }
 
  private:
   TE::Scene scene;
   std::vector<TE::Texture> textures;
+  glm::mat4 world = glm::mat4(1.0f);
 };
 
 class Sandbox : public TE::Application {

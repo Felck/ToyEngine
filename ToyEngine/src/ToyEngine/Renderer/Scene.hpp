@@ -16,9 +16,9 @@ class Scene {
   }
 
   Camera camera{glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.0f, 0.0f, 0.0f)};
+  Buffer ubo;
 
  private:
   std::vector<VertexArray> vertex_arrays;
-  Buffer ubo;
 };
 }  // namespace TE
