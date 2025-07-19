@@ -62,7 +62,6 @@ class GraphicsContext {
     vk::CommandBuffer command_buffer;
     vk::Fence submit_fence;
     vk::Semaphore acquire_semaphore;
-    vk::Semaphore release_semaphore;
   };
 
   Device device;

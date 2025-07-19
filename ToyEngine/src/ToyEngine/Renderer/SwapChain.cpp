@@ -6,6 +6,7 @@
 
 #include "ToyEngine/Renderer/Device.hpp"
 #include "ToyEngine/Renderer/Helpers.hpp"
+#include "tepch.hpp"
 
 namespace TE {
 
@@ -63,6 +64,7 @@ void SwapChain::init() {
   std::vector<vk::Image> images = device.getDevice().getSwapchainImagesKHR(this->swapchain);
   for (const auto& image : images) {
     this->image_views.push_back(createImageView(device.getDevice(), image, this->format));
+    this->submit_semaphores.push_back(device.getDevice().createSemaphore({}));
   }
 }
 
@@ -81,6 +83,11 @@ void SwapChain::destroy() {
     device.getDevice().destroyImageView(image_view);
   }
   image_views.clear();
+
+  for (auto semaphore : this->submit_semaphores) {
+    device.getDevice().destroySemaphore(semaphore);
+  }
+  submit_semaphores.clear();
 
   if (this->swapchain) {
     device.getDevice().destroySwapchainKHR(this->swapchain);

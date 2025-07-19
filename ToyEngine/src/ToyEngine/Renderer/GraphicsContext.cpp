@@ -43,7 +43,6 @@ GraphicsContext::~GraphicsContext() {
 
   for (auto& frame : frame_data) {
     device.destroySemaphore(frame.acquire_semaphore);
-    device.destroySemaphore(frame.release_semaphore);
     device.destroyFence(frame.submit_fence);
     device.destroyCommandPool(frame.command_pool);
   }
@@ -96,7 +95,7 @@ void GraphicsContext::endFrame() {
 
   vk::Semaphore wait_semaphores[] = {frame.acquire_semaphore};
   vk::PipelineStageFlags wait_stages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
-  vk::Semaphore signal_semaphores[] = {frame.release_semaphore};
+  vk::Semaphore signal_semaphores[] = {swapchain.getSubmitSemaphore()};
   vk::SubmitInfo submit_info{
       .waitSemaphoreCount = 1,
       .pWaitSemaphores = wait_semaphores,
@@ -415,7 +414,6 @@ void GraphicsContext::createFrameData() {
     frame.command_pool = device.createCommandPool(pool_info);
     frame.submit_fence = device.createFence({.flags = vk::FenceCreateFlagBits::eSignaled});
     frame.acquire_semaphore = device.createSemaphore({});
-    frame.release_semaphore = device.createSemaphore({});
 
     vk::CommandBufferAllocateInfo alloc_info{
         .commandPool = frame.command_pool,

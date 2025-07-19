@@ -22,6 +22,7 @@ class SwapChain {
   inline vk::Extent2D getExtent() const { return extent; }
   inline uint32_t getImageCount() const { return image_views.size(); }
   inline uint32_t getImage() const { return current_image; }
+  inline vk::Semaphore getSubmitSemaphore() const { return submit_semaphores[current_image]; }
   inline vk::Framebuffer getFramebuffer() const { return framebuffers[current_image]; }
 
  private:
@@ -37,6 +38,7 @@ class SwapChain {
   vk::Extent2D extent;
   std::vector<vk::ImageView> image_views;
   std::vector<vk::Framebuffer> framebuffers;
+  std::vector<vk::Semaphore> submit_semaphores;
   uint32_t current_image;
 };
 
