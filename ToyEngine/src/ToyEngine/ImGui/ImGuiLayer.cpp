@@ -67,8 +67,6 @@ void ImGuiLayer::onAttach() {
   init_info.ImageCount = ctx.getSwapChain().getImageCount();
   init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
   ImGui_ImplVulkan_Init(&init_info);
-
-  ImGui_ImplVulkan_CreateFontsTexture();
 }
 
 void ImGuiLayer::onDetach() {
